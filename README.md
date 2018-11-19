@@ -2,7 +2,7 @@
 
 Sow with little data seed, harvest much from a text field.
 
-播撒几多种子词，收获万千领域实
+播撒几多种子词，收获万千领域实。
 
 ![PyPI - Python Version](https://img.shields.io/badge/python-3.6-blue.svg) ![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg) ![Version](https://img.shields.io/badge/version-V0.1-red.svg)
 
@@ -28,6 +28,7 @@ ht = HarvestText()
 即可调用本库的功能接口。
 	
 1.新词发现
+
 从比较大量的文本中利用一些统计指标发现新词。（可选）通过提供一些种子词语来确定怎样程度质量的词语可以被发现。（即至少所有的种子词会被发现，在满足一定的基础要求的前提下。）
 ```python3
 para = "上港的武磊和恒大的郜林，谁是中国最好的前锋？武磊吧，他是射手榜第一，原来是弱点的单刀也有了进步"
@@ -43,6 +44,7 @@ print(new_words)
 具体的方法和指标含义，参考：http://www.matrix67.com/blog/archives/5044
 	
 2.实体链接
+
 给定某些实体及其可能的代称，以及实体对应类型。将其登录到词典中，在分词时优先切分出来，并且以对应类型作为词性。也可以单独获得语料中的所有实体及其位置：
 
 ```python3
@@ -83,6 +85,7 @@ for span, entity in ht.entity_linking(para):
 这里把“武球王”转化为了标准指称“武磊”，可以便于标准统一的统计工作。
 
 3. 情感分析
+
 本库采用情感词典方法进行情感分析，通过提供少量标准的褒贬义词语，从语料中自动学习其他词语的情感倾向，形成情感词典。对句中情感词的加总平均则用于判断句子的情感倾向：
 ```python3
 print("\nsentiment dictionary")
