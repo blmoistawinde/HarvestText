@@ -2,7 +2,7 @@
 
 Sow with little data seed, harvest much from a text field.
 
-播撒几多种子词，收获万千领域实。
+播撒几多种子词，收获万千领域实
 
 ![PyPI - Python Version](https://img.shields.io/badge/python-3.6-blue.svg) ![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg) ![Version](https://img.shields.io/badge/version-V0.1-red.svg)
 
@@ -28,10 +28,9 @@ ht = HarvestText()
 即可调用本库的功能接口。
 	
 1.新词发现
-
 从比较大量的文本中利用一些统计指标发现新词。（可选）通过提供一些种子词语来确定怎样程度质量的词语可以被发现。（即至少所有的种子词会被发现，在满足一定的基础要求的前提下。）
 ```python3
-para = "上港的武磊和恒大的郜林，谁是中国最好的前锋？武磊吧，他是射手榜第一，原来是弱点的单刀也有了进步"
+para = "上港的武磊和恒大的郜林，谁是中国最好的前锋？那当然是武磊武球王了，他是射手榜第一，原来是弱点的单刀也有了进步"
 #返回关于新词质量的一系列信息，允许手工改进筛选(pd.DataFrame型)
 new_words_info = ht.word_discover(para)
 #new_words_info = ht.word_discover(para, threshold_seeds=["武磊"])  
@@ -42,9 +41,20 @@ print(new_words)
 > ["武磊"]
 
 具体的方法和指标含义，参考：http://www.matrix67.com/blog/archives/5044
+
+可以把找到的新词登录，后续的分词中将会优先分出这些词，并把词性标注为"新词"
+```python3
+new_words = ["落叶球","666"]
+    ht.add_new_words(new_words)
+    print(ht.seg("这个落叶球踢得真是666",return_sent=True))
+    for word, flag in ht.posseg("这个落叶球踢得真是666"):
+        print("%s:%s" % (word, flag),end = " ")
+```
+> 这个 落叶球 踢 得 真是 666
+
+> 这个:r 落叶球:新词 踢:v 得:ud 真是:d 666:新词 
 	
 2.实体链接
-
 给定某些实体及其可能的代称，以及实体对应类型。将其登录到词典中，在分词时优先切分出来，并且以对应类型作为词性。也可以单独获得语料中的所有实体及其位置：
 
 ```python3
@@ -56,7 +66,7 @@ print("\nSentence segmentation")
 print(ht.seg(para,return_sent=True))    # return_sent=False时，则返回词语列表
 ```
 	
-> 上港 的 武磊 和 恒大 的 郜林 ， 谁 是 中国 最好 的 前锋 ？ 那 当然 是 武球王 ， 他 是 射手榜 第一 ， 原来 是 弱点 的 单刀 也 有 了 进步
+> 上港 的 武磊 和 恒大 的 郜林 ， 谁 是 中国 最好 的 前锋 ？ 那 当然 是 武磊 武球王 了， 他 是 射手榜 第一 ， 原来 是 弱点 的 单刀 也 有 了 进步
 
 采用传统的分词工具很容易把“武球王”拆分为“武 球王”
 	
@@ -66,7 +76,7 @@ for word, flag in ht.posseg(para):
 	print("%s:%s" % (word, flag),end = " ")
 ```
 
-> 上港:球队 的:uj 武磊:球员 和:c 恒大:球队 的:uj 郜林:球员 ，:x 谁:r 是:v 中国:ns 最好:a 的:uj 前锋:位置 ？:x 武磊:球员 吧:y ，:x 他:r 是:v 射手榜:n 第一:m ，:x 原来:d 是:v 弱点:n 的:uj 单刀:术语 也:d 有:v 了:ul 进步:d 
+> 上港:球队 的:uj 武磊:球员 和:c 恒大:球队 的:uj 郜林:球员 ，:x 谁:r 是:v 中国:ns 最好:a 的:uj 前锋:位置 ？:x 那:r 当然:d 是:v 武磊:球员 武球王:球员 了:ul ，:x 他:r 是:v 射手榜:n 第一:m ，:x 原来:d 是:v 弱点:n 的:uj 单刀:术语 也:d 有:v 了:ul 进步:d 
 
 ```python3
 print("\n\nentity_linking")
@@ -79,13 +89,13 @@ for span, entity in ht.entity_linking(para):
 [6, 8] ('广州恒大', '#球队#')
 [9, 11] ('郜林', '#球员#')
 [19, 21] ('前锋', '#位置#')
-[26, 29] ('武磊', '#球员#')
-[44, 46] ('单刀球', '#术语#')
+[26, 28] ('武磊', '#球员#')
+[28, 31] ('武磊', '#球员#')
+[47, 49] ('单刀球', '#术语#')
 
 这里把“武球王”转化为了标准指称“武磊”，可以便于标准统一的统计工作。
 
 3. 情感分析
-
 本库采用情感词典方法进行情感分析，通过提供少量标准的褒贬义词语，从语料中自动学习其他词语的情感倾向，形成情感词典。对句中情感词的加总平均则用于判断句子的情感倾向：
 ```python3
 print("\nsentiment dictionary")

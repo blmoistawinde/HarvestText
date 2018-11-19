@@ -135,12 +135,18 @@ class HarvestText:
             length = len(doc)
             min_entropy = np.log(length) / 8
             min_freq = min(0.00005,20.0/length)
-            min_aggregation = np.sqrt(length) / 10
+            min_aggregation = np.sqrt(length) / 15
             mem_saving = int(length>300000)
             # ent_threshold: 确定左右熵的阈值对双侧都要求"both"，或者只要左右平均值达到"avg"
             # 对于每句话都很极短的情况（如长度<8），经常出现在左右边界的词语可能难以被确定，这时ent_threshold建议设为"avg"
-        ws = WordDiscoverer(doc,max_word_len,min_freq,min_aggregation, min_entropy, ent_threshold ,mem_saving)
         info = {"text":[],"freq":[],"left_ent":[],"right_ent":[],"agg":[]}
+        try:
+            ws = WordDiscoverer(doc,max_word_len,min_freq,min_aggregation, min_entropy, ent_threshold ,mem_saving)
+        except:
+            info = pd.DataFrame(info)
+            info = info.set_index("text")
+            return info
+        
         if len(excluding_types) > 0:
             ex_mentions = [x for enty in self.entity_mention_dict
                              if self.entity_type_dict[enty] in excluding_types
@@ -185,8 +191,7 @@ class HarvestText:
 if __name__ == "__main__":
     ht = HarvestText()
     
-    para = "上港的武磊和恒大的郜林，谁是中国最好的前锋？那当然是武球王，他是射手榜第一，原来是弱点的单刀也有了进步"
-    
+    para = "上港的武磊和恒大的郜林，谁是中国最好的前锋？那当然是武磊武球王了，他是射手榜第一，原来是弱点的单刀也有了进步"
     
     # these 2 seeds can be obtained from some structured knowledge base
     print("add entity info(mention, type)")
@@ -210,13 +215,18 @@ if __name__ == "__main__":
     print("\nnew words detection")
     print(new_words_info)
     new_words = new_words_info.index.tolist()
+    
     # 添加识别到的新词，在后续的分词中将会优先分出这个词，词性为"新词"
-    #ht.add_new_words(new_words)
+    new_words = ["落叶球","666"]
+    ht.add_new_words(new_words)
+    print(ht.seg("这个落叶球踢得真是666",return_sent=True))
+    for word, flag in ht.posseg("这个落叶球踢得真是666"):
+        print("%s:%s" % (word, flag),end = " ")
     
     # 情感词典的构建及情感分析
-    print("\nsentiment dictionary")
+    print("\n\nsentiment dictionary")
     sents = ["武磊威武，中超第一射手！",
-          "武磊强，中超最第一本土球员！",
+          "武磊强，中超第一本土球员！",
           "郜林不行，只会抱怨的球员注定上限了",
           "郜林看来不行，已经到上限了"]
     sent_dict = ht.build_sent_dict(sents,min_times=1,pos_seeds=["第一"],neg_seeds=["不行"])
