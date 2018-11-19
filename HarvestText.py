@@ -185,7 +185,7 @@ class HarvestText:
 if __name__ == "__main__":
     ht = HarvestText()
     
-    para = "上港的武磊和恒大的郜林，谁是中国最好的前锋？武磊吧，他是射手榜第一，原来是弱点的单刀也有了进步"
+    para = "上港的武磊和恒大的郜林，谁是中国最好的前锋？那当然是武球王，他是射手榜第一，原来是弱点的单刀也有了进步"
     
     
     # these 2 seeds can be obtained from some structured knowledge base
