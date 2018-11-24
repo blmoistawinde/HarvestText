@@ -3,6 +3,8 @@
 import re
 import time
 import math
+import numpy as np
+import pandas as pd
 from collections import defaultdict
 
 def genSubstr(string, n):
@@ -114,11 +116,18 @@ class WordDiscoverer(object):
         self.words = [w[0] for w in self.word_with_freq]
         # Result infomations, i.e., average data of all words
         word_count = float(len(self.word_with_freq))
-        self.avg_len = sum([len(w.text) for w in self.word_infos])/word_count
-        self.avg_freq = sum([w.freq for w in self.word_infos])/word_count
-        self.avg_left_entropy = sum([w.left for w in self.word_infos])/word_count
-        self.avg_right_entropy = sum([w.right for w in self.word_infos])/word_count
-        self.avg_aggregation = sum([w.aggregation for w in self.word_infos])/word_count
+        if word_count > 0:
+            self.avg_len = sum([len(w.text) for w in self.word_infos])/word_count
+            self.avg_freq = sum([w.freq for w in self.word_infos])/word_count
+            self.avg_left_entropy = sum([w.left for w in self.word_infos])/word_count
+            self.avg_right_entropy = sum([w.right for w in self.word_infos])/word_count
+            self.avg_aggregation = sum([w.aggregation for w in self.word_infos])/word_count
+        else:
+            self.avg_len = 0
+            self.avg_freq = 0
+            self.avg_left_entropy = 0
+            self.avg_right_entropy = 0
+            self.avg_aggregation = 0
 
     def genWords(self, doc):
         """
@@ -193,10 +202,25 @@ class WordDiscoverer(object):
             v.left = entropyOfList(v.left)
             v.right = entropyOfList(v.right)
         return values
-
+    def get_df_info(self,ex_mentions):
+        info = {"text":[],"freq":[],"left_ent":[],"right_ent":[],"agg":[]}
+        for w in self.word_infos:
+            if w.text in ex_mentions:
+                continue
+            info["text"].append(w.text)
+            info["freq"].append(w.freq)
+            info["left_ent"].append(w.left)
+            info["right_ent"].append(w.right)
+            info["agg"].append(w.aggregation)
+        info = pd.DataFrame(info)
+        info = info.set_index("text")
+        # 词语质量评分
+        info["score"] = np.log10(info["agg"])*info["freq"]*(info["left_ent"]+info["right_ent"])
+        return info
 
 if __name__ == '__main__':
    doc = '十四是十四四十是四十，，十四不是四十，，，，四十不是十四'
+   doc = "恒大门前种两棵树都不至于这个比分"
    ws = WordDiscoverer(doc, max_word_len=2, min_aggregation=1.2, min_entropy=0.4)
    N = ws.length
    

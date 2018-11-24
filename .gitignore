@@ -1,2 +1,8 @@
 *.pyc
 /__pycache__
+
+/my_tests
+/.idea
+/build
+/dist
+/harvesttext.egg-info

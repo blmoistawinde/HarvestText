@@ -16,18 +16,35 @@ HarvestText是一个基于少量种子词和背景知识完成一些领域自适
 ## 依赖
 - jieba
 - numpy, pandas
+- networkx(可选)
 	
 ## 用法
-目前还没有实现安装功能，使用方法是把本目录下的3个py文件放入你当前文件的工作目录，然后使用：
+首先安装，命令行进入setup.py所在目录，然后:
+```
+python setup.py install
+```
+
+随后在代码中：
 
 ```python3
-from HarvestText import HarvestText
+from harvesttext import HarvestText
 ht = HarvestText()
 ```
 
 即可调用本库的功能接口。
+
+<a id="目录"></a>
+目录:
+- [新词发现](#新词发现)
+- [实体链接](#实体链接)
+- [情感分析](#情感分析)
+- [信息检索（考虑实体消歧）](#信息检索（考虑实体消歧）)
+- [文本摘要](#文本摘要)
+- [实体网络](#实体网络)
+- [存取与消除](#存取与消除)
 	
-1.新词发现
+<a id="新词发现"> </a>
+### 新词发现
 从比较大量的文本中利用一些统计指标发现新词。（可选）通过提供一些种子词语来确定怎样程度质量的词语可以被发现。（即至少所有的种子词会被发现，在满足一定的基础要求的前提下。）
 ```python3
 para = "上港的武磊和恒大的郜林，谁是中国最好的前锋？那当然是武磊武球王了，他是射手榜第一，原来是弱点的单刀也有了进步"
@@ -45,16 +62,17 @@ print(new_words)
 可以把找到的新词登录，后续的分词中将会优先分出这些词，并把词性标注为"新词"
 ```python3
 new_words = ["落叶球","666"]
-    ht.add_new_words(new_words)
-    print(ht.seg("这个落叶球踢得真是666",return_sent=True))
-    for word, flag in ht.posseg("这个落叶球踢得真是666"):
-        print("%s:%s" % (word, flag),end = " ")
+ht.add_new_words(new_words)
+print(ht.seg("这个落叶球踢得真是666",return_sent=True))
+for word, flag in ht.posseg("这个落叶球踢得真是666"):
+	print("%s:%s" % (word, flag),end = " ")
 ```
 > 这个 落叶球 踢 得 真是 666
 
 > 这个:r 落叶球:新词 踢:v 得:ud 真是:d 666:新词 
 	
-2.实体链接
+<a id="实体链接"> </a>
+### 实体链接
 给定某些实体及其可能的代称，以及实体对应类型。将其登录到词典中，在分词时优先切分出来，并且以对应类型作为词性。也可以单独获得语料中的所有实体及其位置：
 
 ```python3
@@ -95,7 +113,8 @@ for span, entity in ht.entity_linking(para):
 
 这里把“武球王”转化为了标准指称“武磊”，可以便于标准统一的统计工作。
 
-3. 情感分析
+<a id="情感分析"> </a>
+### 情感分析
 本库采用情感词典方法进行情感分析，通过提供少量标准的褒贬义词语，从语料中自动学习其他词语的情感倾向，形成情感词典。对句中情感词的加总平均则用于判断句子的情感倾向：
 ```python3
 print("\nsentiment dictionary")
@@ -121,5 +140,81 @@ print("%f:%s" % (ht.analyse_sent(sent),sent))
 ```
 > 0.600000:武球王威武，中超最强球员！
 
+<a id="信息检索（考虑实体消歧）"> </a>
+### 信息检索（考虑实体消歧）
+可以从文档列表中查找出包含对应实体（及其别称）的文档，以及统计包含某实体的文档数。使用倒排索引的数据结构完成快速检索。
+```python3
+docs = ["武磊威武，中超第一射手！",
+		"郜林看来不行，已经到上限了。",
+		"武球王威武，中超最强前锋！",
+		"武磊和郜林，谁是中国最好的前锋？"]
+inv_index = ht.build_index(docs)
+print(ht.get_entity_counts(docs, inv_index))  # 获得文档中所有实体的出现次数
+# {'武磊': 3, '郜林': 2, '前锋': 2}
+
+print(ht.search_entity("武磊", docs, inv_index))  # 单实体查找
+# ['武磊威武，中超第一射手！', '武球王威武，中超最强前锋！', '武磊和郜林，谁是中国最好的前锋？']
+
+print(ht.search_entity("武磊 郜林", docs, inv_index))  # 多实体共现
+# ['武磊和郜林，谁是中国最好的前锋？']
+
+# 谁是最被人们热议的前锋？用这里的接口可以很简便地回答这个问题
+subdocs = ht.search_entity("#球员# 前锋", docs, inv_index)
+print(subdocs)  # 实体、实体类型混合查找
+# ['武球王威武，中超最强前锋！', '武磊和郜林，谁是中国最好的前锋？']
+inv_index2 = ht.build_index(subdocs)
+print(ht.get_entity_counts(subdocs, inv_index2, used_type=["球员"]))  # 可以限定类型
+# {'武磊': 2, '郜林': 1}
+```
+
+<a id="文本摘要"> </a>
+### 文本摘要
+(使用networkx实现)
+使用Textrank算法，得到从文档集合中抽取代表句作为摘要信息：
+```python3
+print("\nText summarization")
+docs = ["武磊威武，中超第一射手！",
+		"郜林看来不行，已经到上限了。",
+		"武球王威武，中超最强前锋！",
+		"武磊和郜林，谁是中国最好的前锋？"]
+for doc in ht.get_summary(docs, topK=2):
+	print(doc)
+# 武球王威武，中超最强前锋！
+# 武磊威武，中超第一射手！	
+```
+
+<a id="实体网络"> </a>
+### 实体网络
+(使用networkx实现)
+利用词共现关系，建立其实体间图结构的网络关系(返回networkx.Graph类型)。可以用来建立人物之间的社交网络等。
+```python3
+# 在现有实体库的基础上随时新增，比如从新词发现中得到的漏网之鱼
+ht.add_new_entity("颜骏凌", "颜骏凌", "球员")
+docs = ["武磊和颜骏凌是队友",
+		"武磊和郜林都是国内顶尖前锋"]
+G = ht.build_entity_graph(docs)
+print(dict(G.edges.items()))
+G = ht.build_entity_graph(docs, used_types=["球员"])
+print(dict(G.edges.items()))
+```
+
+<a id="存取与消除"> </a>
+### 存取与消除
+可以本地保存模型再读取复用(pickle)，也可以消除当前模型的记录。
+```python3
+import pickle
+para = "上港的武磊和恒大的郜林，谁是中国最好的前锋？那当然是武磊武球王了，他是射手榜第一，原来是弱点的单刀也有了进步"
+with open("ht_model1", "wb") as f:
+	pickle.dump(ht, f)
+with open("ht_model1", "rb") as f:
+	ht2 = pickle.load(f)
+print("cut with loaded model")
+print(ht2.seg(para))
+
+# 消除记录
+ht2.clear()
+print("cut with cleared model")
+print(ht2.seg(para))
+```
 ## More
 本库正在开发中，关于现有功能的改善和更多功能的添加可能会陆续到来。欢迎在issues里提供意见建议。觉得好用的话，也不妨来个Star~
