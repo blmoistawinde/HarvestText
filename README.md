@@ -4,7 +4,7 @@ Sow with little data seed, harvest much from a text field.
 
 播撒几多种子词，收获万千领域实
 
-![PyPI - Python Version](https://img.shields.io/badge/python-3.6-blue.svg) ![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg) ![Version](https://img.shields.io/badge/version-V0.1-red.svg)
+![PyPI - Python Version](https://img.shields.io/badge/python-3.6-blue.svg) ![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg) 
 
 ## 用途
 HarvestText是一个基于少量种子词和背景知识完成一些领域自适应文本挖掘任务（如新词发现、情感分析、实体链接等）的工具。
