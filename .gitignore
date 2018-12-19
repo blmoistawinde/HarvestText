@@ -6,3 +6,5 @@
 /build
 /dist
 /harvesttext.egg-info
+*.tar
+*.gz

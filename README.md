@@ -19,7 +19,15 @@ HarvestText是一个基于少量种子词和背景知识完成一些领域自适
 - networkx(可选)
 	
 ## 用法
-首先安装，命令行进入setup.py所在目录，然后:
+
+
+首先安装，
+使用pip
+```
+pip install harvesttext
+```
+
+或进入setup.py所在目录，然后命令行:
 ```
 python setup.py install
 ```
