@@ -21,6 +21,11 @@ class HarvestText:
         self.type_entity_mention_dict = defaultdict(dict)
         self.prepared = False
         self.sent_dict = None
+        #self.check_overlap = True                       # 是否检查重叠实体（市长江大桥），开启的话可能会较慢
+        # 因为只有"freq"策略能够做，所以目前设定：指定freq策略时就默认检查重叠,否则不检查
+        self.linking_strategy = "None"                 # 将字面值链接到实体的策略，默认为选取字典序第一个
+        self.entity_count = defaultdict(int)            # 用于'freq'策略
+        self.latest_mention = dict()                    # 用于'latest'策略
     #
     # 实体分词模块
     #
@@ -37,11 +42,14 @@ class HarvestText:
             trie_node['leaf'] = {(entity,type0)}
         else:
             trie_node['leaf'].add((entity,type0))
-    def add_entities(self, entity_mention_dict, entity_type_dict):
+    def add_entities(self, entity_mention_dict, entity_type_dict=None):
         self.entity_mention_dict = entity_mention_dict
-        self.entity_type_dict = entity_type_dict
+        if entity_type_dict:
+            self.entity_type_dict = entity_type_dict
+        else:
+            self.entity_type_dict = {entity: "添加词" for entity in entity_mention_dict}
         type_entity_mention_dict = defaultdict(dict)
-        for entity0,type0 in entity_type_dict.items():
+        for entity0,type0 in self.entity_type_dict.items():
             type_entity_mention_dict[type0][entity0] = entity_mention_dict[entity0]
         self.type_entity_mention_dict = type_entity_mention_dict
         self._add_entities(type_entity_mention_dict)
@@ -83,22 +91,99 @@ class HarvestText:
             return len(sent), trie_node["leaf"]
         else:
             return -1, set()  # -1表示未找到
-    def choose_from(self,name0, entities):
-        # TODO: 加入更多同名不同实体的消歧策略
-        return list(entities)[0]
+    def set_linking_strategy(self,strategy,lastest_mention=None,entity_freq=None,type_freq=None):
+        """
+        为实体链接设定一些简单策略，目前可选的有：
+        'None','freq','latest','latest&freq'
+        'None': 默认选择候选实体字典序第一个
+        'freq': 对于单个字面值，选择其候选实体中之前出现最频繁的一个。
+                对于多个重叠字面值，选择其中候选实体出现最频繁的一个进行连接【每个字面值已经确定唯一映射】。
+        'latest': 对于单个字面值，如果在最近有可以确定的映射，就使用最近的映射。
+        'latest'- 对于职称等作为代称的情况可能会比较有用。
+        比如"经理"可能代指很多人，但是第一次提到的时候应该会包括姓氏。
+        我们就可以记忆这次信息，在后面用来消歧。
+        'freq' - 单字面值例：'市长'+{'A市长':5,'B市长':3} -> 'A市长'
+        重叠字面值例，'xx市长江yy'+{'xx市长':5,'长江yy':3}+{'市长':'xx市长'}+{'长江':'长江yy'} -> 'xx市长'
+        :param strategy: 可选 'None','freq','latest','latest&freq' 中的一个
+        :param lastest_mention: dict,用于'latest',预设
+        :param entity_freq: dict,用于'freq',预设某实体的优先级（词频）
+        :param type_freq: dict,用于'freq',预设类别所有实体的优先级（词频）
+        :return:
+        """
+        self.linking_strategy = strategy
+        if "latest" in strategy:
+            if lastest_mention:
+                for surface0, entity0 in lastest_mention.items():
+                    self.latest_mention[surface0] = entity0
+        if "freq" in strategy:
+            if entity_freq:
+                for entity0, freq0 in entity_freq.items():
+                    self.entity_count[entity0] += freq0
+            if type_freq:
+                for type0, freq0 in type_freq.items():
+                    for entity0 in self.type_entity_mention_dict[type0].keys():
+                        self.entity_count[entity0] += freq0
+
+    def choose_from(self,surface0, entity_types):
+        if self.linking_strategy == "None":
+            linked_entity_type = list(entity_types)[0]
+        else:
+            linked_entity_type = None
+            if "latest" in self.linking_strategy:
+                if surface0 in self.latest_mention:
+                    entity0 = self.latest_mention[surface0]
+                    for entity_type0 in entity_types:
+                        if entity0 in entity_type0:
+                            linked_entity_type = entity_type0
+                            break
+            if linked_entity_type is None:
+                if "freq" in self.linking_strategy:
+                    candidate, cnt_cand = None, 0
+                    for i, entity_type0 in enumerate(entity_types):
+                        entity0, cnt0 = entity_type0[0], 0
+                        if entity0 in self.entity_count:
+                            cnt0 = self.entity_count[entity0]
+                        if i == 0 or cnt0 > cnt_cand:
+                            candidate, cnt_cand = entity_type0, cnt0
+                        linked_entity_type = candidate
+            if linked_entity_type is None:
+                linked_entity_type = list(entity_types)[0]
+        if "latest" in self.linking_strategy:
+            self.latest_mention[surface0] = linked_entity_type[0]
+        if "freq" in self.linking_strategy:
+            self.entity_count[linked_entity_type[0]] += 1
+        return linked_entity_type
     def entity_linking(self,sent):
         self.check_prepared()
         entities_info = []
         l = 0
         while l < len(sent):
-            r, entities = self.dig_trie(sent, l)
+            r, entity_types = self.dig_trie(sent, l)
             if r != -1:
-                name0 = sent[l:r]
-                entities_info.append(([l, r], self.choose_from(name0, entities)))  # 字典树能根据键找到实体范围，选择则依然需要根据历史等优化
-                l = r
-                # TODO: 重叠实体消歧
-                # 这样的更新策略是一旦从左向右匹配到一个实体就把下标移到该实体后，
-                # 然而如果出现候选实体重叠的情况，就无法识别，如：(市[长){江]大桥}
+                surface0 = sent[l:r]         #字面值
+                entity_type0 = self.choose_from(surface0, entity_types)
+                if "freq" in self.linking_strategy:         # 处理重叠消歧，目前只有freq策略能够做到
+                    overlap_surface_entity_with_pos = {}       # 获得每个待链接字面值的“唯一”映射
+                    overlap_surface_entity_with_pos[surface0] = ([l,r],entity_type0)
+                    for ll in range(l+1,r):
+                        rr, entity_types_2 = self.dig_trie(sent, ll)
+                        if rr != -1:
+                            surface0_2 = sent[ll:rr]  # 字面值
+                            entity_type0_2 = self.choose_from(surface0_2, entity_types_2)
+                            overlap_surface_entity_with_pos[surface0_2] = ([ll,rr], entity_type0_2)
+                    # 再利用频率比较这些映射
+                    candidate, cnt_cand = None, 0
+                    for i, ([ll,rr], entity_type00) in enumerate(overlap_surface_entity_with_pos.values()):
+                        entity00, cnt0 = entity_type00[0], 0
+                        if entity00 in self.entity_count:
+                            cnt0 = self.entity_count[entity00]
+                        if i == 0 or cnt0 > cnt_cand:
+                            candidate, cnt_cand = ([ll,rr], entity_type00), cnt0
+                    entities_info.append(candidate)
+                    l = candidate[0][1]
+                else:
+                    entities_info.append(([l, r], entity_type0))  # 字典树能根据键找到实体范围，选择则依然需要根据历史等优化
+                    l = r
             else:
                 l += 1
         return entities_info
@@ -167,7 +252,7 @@ class HarvestText:
         # 采用经验参数，此时后面的参数设置都无效
         if auto_param:               # 根据自己的几个实验确定的参数估计值，没什么科学性，但是应该能得到还行的结果
             length = len(doc)
-            min_entropy = np.log(length) / 8
+            min_entropy = np.log(length) / 10
             min_freq = min(0.00005,20.0/length)
             min_aggregation = np.sqrt(length) / 15
             mem_saving = int(length>300000)

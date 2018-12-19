@@ -1,4 +1,4 @@
-import pickle
+#coding=utf-8
 from harvesttext import HarvestText
 ht = HarvestText()
 
@@ -93,16 +93,64 @@ def entity_network():
     print(dict(G.edges.items()))
 
 def save_load_clear():
+    from harvesttext import loadHT,saveHT
     para = "上港的武磊和恒大的郜林，谁是中国最好的前锋？那当然是武磊武球王了，他是射手榜第一，原来是弱点的单刀也有了进步"
-    with open("ht_model1", "wb") as f:
-        pickle.dump(ht, f)
-    with open("ht_model1", "rb") as f:
-        ht2 = pickle.load(f)
+    saveHT(ht,"ht_model1")
+    ht2 = loadHT("ht_model1")
     print("cut with loaded model")
     print(ht2.seg(para))
     ht2.clear()
     print("cut with cleared model")
     print(ht2.seg(para))
+
+def load_resources():
+    from harvesttext import get_qh_sent_dict, get_sanguo, get_sanguo_entity_dict
+    sdict = get_qh_sent_dict()              # {"pos":[积极词...],"neg":[消极词...]}
+    print("pos_words:",sdict["pos"][:5])
+    print("neg_words:",sdict["neg"][:5])
+    docs = get_sanguo()                 # 文本列表，每个元素为一章的文本
+    print("三国演义最后一章末16字:\n",docs[-1][-16:])
+    entity_mention_dict, entity_type_dict = get_sanguo_entity_dict()
+    print("刘备 指称：",entity_mention_dict["刘备"])
+    print("刘备 类别：",entity_type_dict["刘备"])
+    print("蜀 类别：", entity_type_dict["蜀"])
+    print("益州 类别：", entity_type_dict["益州"])
+
+def linking_strategy():
+    ht0 = HarvestText()
+    def test_case(text0,entity_mention_dict,strategy,entity_type_dict=None,**kwargs):
+        ht0.add_entities(entity_mention_dict,entity_type_dict)
+        ht0.set_linking_strategy(strategy,**kwargs)
+        print(ht0.entity_linking(text0))
+        ht0.clear()
+    # latest 例
+    test_case('X老师您好。请问老师这题怎么做？',
+              entity_mention_dict={"X老师": ["X老师", "老师"], "Y老师": ["Y老师", "老师"]},
+              strategy="latest"
+              )
+
+    test_case('谢谢老师',
+              entity_mention_dict={"X老师": ["X老师", "老师"], "Y老师": ["Y老师", "老师"]},
+              strategy="latest",
+              lastest_mention={"老师": "X老师"})
+
+    # freq 单字面值例
+    test_case('市长',
+              entity_mention_dict={"A市长": ["市长"], "B市长": ["长江"]},
+              strategy="freq",
+              entity_freq={"A市长": 5, "B市长": 3})
+
+    # freq 重叠字面值例
+    test_case('xx市长江yy',
+              entity_mention_dict={"xx市长":["xx市长"],"长江yy":["长江yy"]},
+              strategy="freq",
+              entity_freq={"xx市长":3,"长江yy":5})
+
+    test_case('我叫小沈阳',
+              entity_mention_dict={"沈阳": ["沈阳"], "小沈阳": ["小沈阳"]},
+              strategy="freq",
+              entity_type_dict={"沈阳": "地名", "小沈阳": "人名"},
+              type_freq={"地名": -1})
 
 
 if __name__ == "__main__":
@@ -114,3 +162,5 @@ if __name__ == "__main__":
     text_summarization()
     entity_network()
     save_load_clear()
+    load_resources()
+    linking_strategy()

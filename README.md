@@ -4,7 +4,7 @@ Sow with little data seed, harvest much from a text field.
 
 播撒几多种子词，收获万千领域实
 
-![PyPI - Python Version](https://img.shields.io/badge/python-3.6-blue.svg) ![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg) 
+![PyPI - Python Version](https://img.shields.io/badge/python-3.6-blue.svg) ![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg) ![Version](https://img.shields.io/badge/version-V0.3-red.svg)
 
 ## 用途
 HarvestText是一个基于少量种子词和背景知识完成一些领域自适应文本挖掘任务（如新词发现、情感分析、实体链接等）的工具。
@@ -40,6 +40,7 @@ ht = HarvestText()
 - [信息检索（考虑实体消歧）](#信息检索（考虑实体消歧）)
 - [文本摘要](#文本摘要)
 - [实体网络](#实体网络)
+- [内置资源](#内置资源)
 - [存取与消除](#存取与消除)
 	
 <a id="新词发现"> </a>
@@ -112,9 +113,12 @@ for span, entity in ht.entity_linking(para):
 
 这里把“武球王”转化为了标准指称“武磊”，可以便于标准统一的统计工作。
 
+(V0.3) 现在本库能够用一些基本策略来处理复杂的实体消歧任务（比如一词多义【"老师"是指"A老师"还是"B老师"？】、候选词重叠【xx市长/江yy？、xx市长/江yy？】）。
+具体可见[linking_strategy()](./examples/basics.py)
+
 <a id="情感分析"> </a>
 ### 情感分析
-本库采用情感词典方法进行情感分析，通过提供少量标准的褒贬义词语，从语料中自动学习其他词语的情感倾向，形成情感词典。对句中情感词的加总平均则用于判断句子的情感倾向：
+本库采用情感词典方法进行情感分析，通过提供少量标准的褒贬义词语（“种子词”），从语料中自动学习其他词语的情感倾向，形成情感词典。对句中情感词的加总平均则用于判断句子的情感倾向：
 ```python3
 print("\nsentiment dictionary")
 sents = ["武磊威武，中超第一射手！",
@@ -138,6 +142,8 @@ sent = "武球王威武，中超最强球员！"
 print("%f:%s" % (ht.analyse_sent(sent),sent))
 ```
 > 0.600000:武球王威武，中超最强球员！
+
+如果没想好选择哪些词语作为“种子词”，本库中也内置了一个通用情感词典[内置资源](#内置资源)，可以从中挑选。
 
 <a id="信息检索（考虑实体消歧）"> </a>
 ### 信息检索（考虑实体消歧）
@@ -197,17 +203,57 @@ G = ht.build_entity_graph(docs, used_types=["球员"])
 print(dict(G.edges.items()))
 ```
 
+<a id="内置资源"> </a>
+### 内置资源
+现在本库内集成了一些资源，方便使用和建立demo。
+
+资源包括：
+- 褒贬义词典 清华大学 李军 整理自http://nlp.csai.tsinghua.edu.cn/site2/index.php/13-sms
+- 三国演义文言文文本
+- 三国演义人名、州名、势力知识库
+
+```python3
+def load_resources():
+    from harvesttext import get_qh_sent_dict, get_sanguo, get_sanguo_entity_dict
+    
+	sdict = get_qh_sent_dict()  # {"pos":[积极词...],"neg":[消极词...]}
+    print("pos_words:",sdict["pos"][:5])
+    print("neg_words:",sdict["neg"][:5])
+    
+	docs = get_sanguo()     # 文本列表，每个元素为一章的文本
+    print("三国演义最后一章末16字:\n",docs[-1][-16:])
+    
+	entity_mention_dict, entity_type_dict = get_sanguo_entity_dict()
+    print("刘备 指称：",entity_mention_dict["刘备"])
+    print("刘备 类别：",entity_type_dict["刘备"])
+	print("蜀 类别：", entity_type_dict["蜀"])
+    print("益州 类别：", entity_type_dict["益州"])
+load_resources()
+```
+
+```
+pos_words: ['遂意', '得救', '稳帖', '谦诚', '赞成']
+neg_words: ['乱离', '下流', '挑刺儿', '憾事', '日暮途穷']
+三国演义最后一章末16字:
+ 鼎足三分已成梦，后人凭吊空牢骚。
+刘备 指称： ['刘备', '刘玄德', '玄德']
+刘备 类别： 人名
+蜀 类别： 势力
+益州 类别： 州名
+```
+
 <a id="存取与消除"> </a>
 ### 存取与消除
 可以本地保存模型再读取复用(pickle)，也可以消除当前模型的记录。
 ```python3
-import pickle
+from harvesttext import loadHT,saveHT
 para = "上港的武磊和恒大的郜林，谁是中国最好的前锋？那当然是武磊武球王了，他是射手榜第一，原来是弱点的单刀也有了进步"
-with open("ht_model1", "wb") as f:
-	pickle.dump(ht, f)
-with open("ht_model1", "rb") as f:
-	ht2 = pickle.load(f)
+saveHT(ht,"ht_model1")
+ht2 = loadHT("ht_model1")
 print("cut with loaded model")
+print(ht2.seg(para))
+ht2.clear()
+print("cut with cleared model")
 print(ht2.seg(para))
 
 # 消除记录
