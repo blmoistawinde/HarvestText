@@ -16,7 +16,7 @@ HarvestText是一个基于少量种子词和背景知识完成一些领域自适
 ## 依赖
 - jieba
 - numpy, pandas
-- networkx(可选)
+- networkx
 	
 ## 用法
 
@@ -258,11 +258,6 @@ from harvesttext import loadHT,saveHT
 para = "上港的武磊和恒大的郜林，谁是中国最好的前锋？那当然是武磊武球王了，他是射手榜第一，原来是弱点的单刀也有了进步"
 saveHT(ht,"ht_model1")
 ht2 = loadHT("ht_model1")
-print("cut with loaded model")
-print(ht2.seg(para))
-ht2.clear()
-print("cut with cleared model")
-print(ht2.seg(para))
 
 # 消除记录
 ht2.clear()
