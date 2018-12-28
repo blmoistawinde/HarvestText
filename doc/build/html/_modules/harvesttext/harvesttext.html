@@ -1,0 +1,700 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh_CN">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>harvesttext.harvesttext &#8212; harvesttext 0.4 文档</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/translations.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="索引" href="../../genindex.html" />
+    <link rel="search" title="搜索" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>harvesttext.harvesttext 源代码</h1><div class="highlight"><pre>
+<span></span><span class="c1">#coding=utf-8</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">combinations</span>
+<span class="kn">import</span> <span class="nn">jieba</span>
+<span class="kn">import</span> <span class="nn">jieba.posseg</span> <span class="k">as</span> <span class="nn">pseg</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span> <span class="nn">.word_discoverer</span> <span class="k">import</span> <span class="n">WordDiscoverer</span>
+<span class="kn">from</span> <span class="nn">.sent_dict</span> <span class="k">import</span> <span class="n">SentDict</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<div class="viewcode-block" id="HarvestText"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText">[文档]</a><span class="k">class</span> <span class="nc">HarvestText</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">standard_name</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">standard_name</span> <span class="o">=</span> <span class="n">standard_name</span>             <span class="c1"># 是否使用连接到的实体名来替换原文</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_types</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trie_root</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_mention_dict</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">type_entity_mention_dict</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prepared</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sent_dict</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1">#self.check_overlap = True                       # 是否检查重叠实体（市长江大桥），开启的话可能会较慢</span>
+        <span class="c1"># 因为只有&quot;freq&quot;策略能够做，所以目前设定：指定freq策略时就默认检查重叠,否则不检查</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">linking_strategy</span> <span class="o">=</span> <span class="s2">&quot;None&quot;</span>                 <span class="c1"># 将字面值链接到实体的策略，默认为选取字典序第一个</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_count</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>            <span class="c1"># 用于&#39;freq&#39;策略</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">latest_mention</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>                    <span class="c1"># 用于&#39;latest&#39;策略</span>
+    <span class="c1">#</span>
+    <span class="c1"># 实体分词模块</span>
+    <span class="c1">#</span>
+<div class="viewcode-block" id="HarvestText.build_trie"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.build_trie">[文档]</a>    <span class="k">def</span> <span class="nf">build_trie</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_word</span><span class="p">,</span> <span class="n">entity</span><span class="p">,</span> <span class="n">entity_type</span><span class="p">):</span>
+        <span class="n">type0</span> <span class="o">=</span> <span class="s2">&quot;#</span><span class="si">%s</span><span class="s2">#&quot;</span> <span class="o">%</span> <span class="n">entity_type</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">type0</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_types</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entity_types</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">type0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prepared</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">trie_node</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trie_root</span>
+        <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">new_word</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">trie_node</span><span class="p">:</span>
+                <span class="n">trie_node</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">trie_node</span> <span class="o">=</span> <span class="n">trie_node</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="s1">&#39;leaf&#39;</span> <span class="ow">in</span> <span class="n">trie_node</span><span class="p">:</span>
+            <span class="n">trie_node</span><span class="p">[</span><span class="s1">&#39;leaf&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{(</span><span class="n">entity</span><span class="p">,</span><span class="n">type0</span><span class="p">)}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">trie_node</span><span class="p">[</span><span class="s1">&#39;leaf&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">entity</span><span class="p">,</span><span class="n">type0</span><span class="p">))</span></div>
+<div class="viewcode-block" id="HarvestText.remove_mention"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.remove_mention">[文档]</a>    <span class="k">def</span> <span class="nf">remove_mention</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mention</span><span class="p">):</span>
+        <span class="n">trie_node</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trie_root</span>
+        <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">mention</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">trie_node</span><span class="p">:</span>
+                <span class="n">trie_node</span> <span class="o">=</span> <span class="n">trie_node</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="s1">&#39;leaf&#39;</span> <span class="ow">in</span> <span class="n">trie_node</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">del</span> <span class="n">trie_node</span><span class="p">[</span><span class="s1">&#39;leaf&#39;</span><span class="p">]</span></div>
+<div class="viewcode-block" id="HarvestText.remove_entity"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.remove_entity">[文档]</a>    <span class="k">def</span> <span class="nf">remove_entity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+        <span class="n">mentions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_mention_dict</span><span class="p">[</span><span class="n">entity</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">mention0</span> <span class="ow">in</span> <span class="n">mentions</span><span class="p">:</span>
+            <span class="n">trie_node</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trie_root</span>
+            <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">mention0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">trie_node</span><span class="p">:</span>
+                    <span class="n">trie_node</span> <span class="o">=</span> <span class="n">trie_node</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">continue</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="s1">&#39;leaf&#39;</span> <span class="ow">in</span> <span class="n">trie_node</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="p">(</span><span class="n">entity0</span><span class="p">,</span><span class="n">type0</span><span class="p">)</span> <span class="ow">in</span> <span class="n">trie_node</span><span class="p">[</span><span class="s1">&#39;leaf&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">entity0</span> <span class="o">==</span> <span class="n">entity</span><span class="p">:</span>
+                        <span class="n">trie_node</span><span class="p">[</span><span class="s2">&quot;leaf&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">((</span><span class="n">entity0</span><span class="p">,</span><span class="n">type0</span><span class="p">))</span>
+                        <span class="k">break</span></div>
+
+<div class="viewcode-block" id="HarvestText.add_entities"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.add_entities">[文档]</a>    <span class="k">def</span> <span class="nf">add_entities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_mention_dict</span><span class="p">,</span> <span class="n">entity_type_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_mention_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">entity0</span><span class="p">,</span><span class="nb">set</span><span class="p">(</span><span class="n">mentions0</span><span class="p">))</span> <span class="k">for</span> <span class="p">(</span><span class="n">entity0</span><span class="p">,</span><span class="n">mentions0</span><span class="p">)</span> <span class="ow">in</span> <span class="n">entity_mention_dict</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">entity_type_dict</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span> <span class="o">=</span> <span class="n">entity_type_dict</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">entity</span><span class="p">:</span> <span class="s2">&quot;添加词&quot;</span> <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="n">entity_mention_dict</span><span class="p">}</span>
+        <span class="n">type_entity_mention_dict</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">entity0</span><span class="p">,</span><span class="n">type0</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">entity0</span> <span class="ow">in</span> <span class="n">entity_mention_dict</span><span class="p">:</span>
+                <span class="n">type_entity_mention_dict</span><span class="p">[</span><span class="n">type0</span><span class="p">][</span><span class="n">entity0</span><span class="p">]</span> <span class="o">=</span> <span class="n">entity_mention_dict</span><span class="p">[</span><span class="n">entity0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">type_entity_mention_dict</span> <span class="o">=</span> <span class="n">type_entity_mention_dict</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_entities</span><span class="p">(</span><span class="n">type_entity_mention_dict</span><span class="p">)</span></div>
+<div class="viewcode-block" id="HarvestText.add_typed_words"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.add_typed_words">[文档]</a>    <span class="k">def</span> <span class="nf">add_typed_words</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">type_word_dict</span><span class="p">):</span>
+        <span class="n">entity_type_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">type0</span> <span class="ow">in</span> <span class="n">type_word_dict</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">type_word_dict</span><span class="p">[</span><span class="n">type0</span><span class="p">]:</span>
+                <span class="n">entity_type_dict</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="n">type0</span>
+        <span class="n">entity_mention_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">entity0</span><span class="p">,</span> <span class="nb">set</span><span class="p">([</span><span class="n">entity0</span><span class="p">]))</span> <span class="k">for</span> <span class="n">entity0</span> <span class="ow">in</span> <span class="n">entity_type_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span> <span class="o">=</span> <span class="n">entity_type_dict</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_mention_dict</span> <span class="o">=</span> <span class="n">entity_mention_dict</span>
+
+        <span class="n">type_entity_mention_dict</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">entity0</span><span class="p">,</span> <span class="n">type0</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">entity0</span> <span class="ow">in</span> <span class="n">entity_mention_dict</span><span class="p">:</span>
+                <span class="n">type_entity_mention_dict</span><span class="p">[</span><span class="n">type0</span><span class="p">][</span><span class="n">entity0</span><span class="p">]</span> <span class="o">=</span> <span class="n">entity_mention_dict</span><span class="p">[</span><span class="n">entity0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">type_entity_mention_dict</span> <span class="o">=</span> <span class="n">type_entity_mention_dict</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_entities</span><span class="p">(</span><span class="n">type_entity_mention_dict</span><span class="p">)</span></div>
+    <span class="k">def</span> <span class="nf">_add_entities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">type_entity_mention_dict</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">type0</span> <span class="ow">in</span> <span class="n">type_entity_mention_dict</span><span class="p">:</span>
+            <span class="n">entity_mention_dict0</span> <span class="o">=</span> <span class="n">type_entity_mention_dict</span><span class="p">[</span><span class="n">type0</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">entity0</span> <span class="ow">in</span> <span class="n">entity_mention_dict0</span><span class="p">:</span>
+                <span class="n">mentions</span> <span class="o">=</span> <span class="n">entity_mention_dict0</span><span class="p">[</span><span class="n">entity0</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">mention0</span> <span class="ow">in</span> <span class="n">mentions</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">build_trie</span><span class="p">(</span><span class="n">mention0</span><span class="p">,</span><span class="n">entity0</span><span class="p">,</span><span class="n">type0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prepare</span><span class="p">()</span>
+<div class="viewcode-block" id="HarvestText.prepare"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.prepare">[文档]</a>    <span class="k">def</span> <span class="nf">prepare</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prepared</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">for</span> <span class="n">type0</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_types</span><span class="p">:</span>
+            <span class="n">jieba</span><span class="o">.</span><span class="n">add_word</span><span class="p">(</span><span class="n">type0</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">type0</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span></div>
+<div class="viewcode-block" id="HarvestText.deprepare"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.deprepare">[文档]</a>    <span class="k">def</span> <span class="nf">deprepare</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prepared</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">for</span> <span class="n">type0</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_types</span><span class="p">:</span>
+            <span class="k">del</span> <span class="n">jieba</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">FREQ</span><span class="p">[</span><span class="n">type0</span><span class="p">]</span>
+            <span class="n">tag0</span> <span class="o">=</span> <span class="n">type0</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">tag0</span> <span class="ow">in</span> <span class="n">jieba</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">user_word_tag_tab</span><span class="p">:</span>
+                <span class="k">del</span> <span class="n">jieba</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">user_word_tag_tab</span><span class="p">[</span><span class="n">tag0</span><span class="p">]</span>
+            <span class="n">jieba</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">total</span> <span class="o">-=</span> <span class="mi">10000</span></div>
+<div class="viewcode-block" id="HarvestText.check_prepared"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.check_prepared">[文档]</a>    <span class="k">def</span> <span class="nf">check_prepared</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepared</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prepare</span><span class="p">()</span></div>
+<div class="viewcode-block" id="HarvestText.dig_trie"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.dig_trie">[文档]</a>    <span class="k">def</span> <span class="nf">dig_trie</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sent</span><span class="p">,</span> <span class="n">l</span><span class="p">):</span>  <span class="c1"># 返回实体右边界r,实体范围</span>
+        <span class="n">trie_node</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trie_root</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sent</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">sent</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">in</span> <span class="n">trie_node</span><span class="p">:</span>
+                <span class="n">trie_node</span> <span class="o">=</span> <span class="n">trie_node</span><span class="p">[</span><span class="n">sent</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;leaf&quot;</span> <span class="ow">in</span> <span class="n">trie_node</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">i</span><span class="p">,</span> <span class="n">trie_node</span><span class="p">[</span><span class="s2">&quot;leaf&quot;</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># -1表示未找到</span>
+        <span class="k">if</span> <span class="s2">&quot;leaf&quot;</span> <span class="ow">in</span> <span class="n">trie_node</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">sent</span><span class="p">),</span> <span class="n">trie_node</span><span class="p">[</span><span class="s2">&quot;leaf&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># -1表示未找到</span></div>
+<div class="viewcode-block" id="HarvestText.set_linking_strategy"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.set_linking_strategy">[文档]</a>    <span class="k">def</span> <span class="nf">set_linking_strategy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">strategy</span><span class="p">,</span><span class="n">lastest_mention</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">entity_freq</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">type_freq</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        为实体链接设定一些简单策略，目前可选的有：</span>
+<span class="sd">        &#39;None&#39;,&#39;freq&#39;,&#39;latest&#39;,&#39;latest&amp;freq&#39;</span>
+<span class="sd">        &#39;None&#39;: 默认选择候选实体字典序第一个</span>
+<span class="sd">        &#39;freq&#39;: 对于单个字面值，选择其候选实体中之前出现最频繁的一个。</span>
+<span class="sd">                对于多个重叠字面值，选择其中候选实体出现最频繁的一个进行连接【每个字面值已经确定唯一映射】。</span>
+<span class="sd">        &#39;latest&#39;: 对于单个字面值，如果在最近有可以确定的映射，就使用最近的映射。</span>
+<span class="sd">        &#39;latest&#39;- 对于职称等作为代称的情况可能会比较有用。</span>
+<span class="sd">        比如&quot;经理&quot;可能代指很多人，但是第一次提到的时候应该会包括姓氏。</span>
+<span class="sd">        我们就可以记忆这次信息，在后面用来消歧。</span>
+<span class="sd">        &#39;freq&#39; - 单字面值例：&#39;市长&#39;+{&#39;A市长&#39;:5,&#39;B市长&#39;:3} -&gt; &#39;A市长&#39;</span>
+<span class="sd">        重叠字面值例，&#39;xx市长江yy&#39;+{&#39;xx市长&#39;:5,&#39;长江yy&#39;:3}+{&#39;市长&#39;:&#39;xx市长&#39;}+{&#39;长江&#39;:&#39;长江yy&#39;} -&gt; &#39;xx市长&#39;</span>
+<span class="sd">        :param strategy: 可选 &#39;None&#39;,&#39;freq&#39;,&#39;latest&#39;,&#39;latest&amp;freq&#39; 中的一个</span>
+<span class="sd">        :param lastest_mention: dict,用于&#39;latest&#39;,预设</span>
+<span class="sd">        :param entity_freq: dict,用于&#39;freq&#39;,预设某实体的优先级（词频）</span>
+<span class="sd">        :param type_freq: dict,用于&#39;freq&#39;,预设类别所有实体的优先级（词频）</span>
+<span class="sd">        :return None</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">linking_strategy</span> <span class="o">=</span> <span class="n">strategy</span>
+        <span class="k">if</span> <span class="s2">&quot;latest&quot;</span> <span class="ow">in</span> <span class="n">strategy</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">lastest_mention</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">surface0</span><span class="p">,</span> <span class="n">entity0</span> <span class="ow">in</span> <span class="n">lastest_mention</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">latest_mention</span><span class="p">[</span><span class="n">surface0</span><span class="p">]</span> <span class="o">=</span> <span class="n">entity0</span>
+        <span class="k">if</span> <span class="s2">&quot;freq&quot;</span> <span class="ow">in</span> <span class="n">strategy</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">entity_freq</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">entity0</span><span class="p">,</span> <span class="n">freq0</span> <span class="ow">in</span> <span class="n">entity_freq</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">entity_count</span><span class="p">[</span><span class="n">entity0</span><span class="p">]</span> <span class="o">+=</span> <span class="n">freq0</span>
+            <span class="k">if</span> <span class="n">type_freq</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">type0</span><span class="p">,</span> <span class="n">freq0</span> <span class="ow">in</span> <span class="n">type_freq</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">for</span> <span class="n">entity0</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">type_entity_mention_dict</span><span class="p">[</span><span class="n">type0</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">entity_count</span><span class="p">[</span><span class="n">entity0</span><span class="p">]</span> <span class="o">+=</span> <span class="n">freq0</span></div>
+
+<div class="viewcode-block" id="HarvestText.choose_from"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.choose_from">[文档]</a>    <span class="k">def</span> <span class="nf">choose_from</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">surface0</span><span class="p">,</span> <span class="n">entity_types</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">linking_strategy</span> <span class="o">==</span> <span class="s2">&quot;None&quot;</span><span class="p">:</span>
+            <span class="n">linked_entity_type</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">entity_types</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">linked_entity_type</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="s2">&quot;latest&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">linking_strategy</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">surface0</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">latest_mention</span><span class="p">:</span>
+                    <span class="n">entity0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">latest_mention</span><span class="p">[</span><span class="n">surface0</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">entity_type0</span> <span class="ow">in</span> <span class="n">entity_types</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">entity0</span> <span class="ow">in</span> <span class="n">entity_type0</span><span class="p">:</span>
+                            <span class="n">linked_entity_type</span> <span class="o">=</span> <span class="n">entity_type0</span>
+                            <span class="k">break</span>
+            <span class="k">if</span> <span class="n">linked_entity_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;freq&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">linking_strategy</span><span class="p">:</span>
+                    <span class="n">candidate</span><span class="p">,</span> <span class="n">cnt_cand</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">0</span>
+                    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">entity_type0</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">entity_types</span><span class="p">):</span>
+                        <span class="n">entity0</span><span class="p">,</span> <span class="n">cnt0</span> <span class="o">=</span> <span class="n">entity_type0</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span>
+                        <span class="k">if</span> <span class="n">entity0</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_count</span><span class="p">:</span>
+                            <span class="n">cnt0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_count</span><span class="p">[</span><span class="n">entity0</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">cnt0</span> <span class="o">&gt;</span> <span class="n">cnt_cand</span><span class="p">:</span>
+                            <span class="n">candidate</span><span class="p">,</span> <span class="n">cnt_cand</span> <span class="o">=</span> <span class="n">entity_type0</span><span class="p">,</span> <span class="n">cnt0</span>
+                        <span class="n">linked_entity_type</span> <span class="o">=</span> <span class="n">candidate</span>
+            <span class="k">if</span> <span class="n">linked_entity_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">linked_entity_type</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">entity_types</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;latest&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">linking_strategy</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">latest_mention</span><span class="p">[</span><span class="n">surface0</span><span class="p">]</span> <span class="o">=</span> <span class="n">linked_entity_type</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;freq&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">linking_strategy</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entity_count</span><span class="p">[</span><span class="n">linked_entity_type</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">linked_entity_type</span></div>
+<div class="viewcode-block" id="HarvestText.mention2entity"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.mention2entity">[文档]</a>    <span class="k">def</span> <span class="nf">mention2entity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">mention</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        找到单个指称对应的实体</span>
+<span class="sd">        :param mention:  指称</span>
+<span class="sd">        :return: 如果存在对应实体，则返回（实体,类型），否则返回None</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">r</span><span class="p">,</span> <span class="n">entity_types</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dig_trie</span><span class="p">(</span><span class="n">mention</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">r</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">surface0</span> <span class="o">=</span> <span class="n">mention</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">r</span><span class="p">]</span>  <span class="c1"># 字面值</span>
+            <span class="p">(</span><span class="n">entity0</span><span class="p">,</span> <span class="n">type0</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">choose_from</span><span class="p">(</span><span class="n">surface0</span><span class="p">,</span> <span class="n">entity_types</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">entity0</span><span class="p">,</span> <span class="n">type0</span></div>
+<div class="viewcode-block" id="HarvestText.entity_linking"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.entity_linking">[文档]</a>    <span class="k">def</span> <span class="nf">entity_linking</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">sent</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_prepared</span><span class="p">()</span>
+        <span class="n">entities_info</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">l</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">sent</span><span class="p">):</span>
+            <span class="n">r</span><span class="p">,</span> <span class="n">entity_types</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dig_trie</span><span class="p">(</span><span class="n">sent</span><span class="p">,</span> <span class="n">l</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">r</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">surface0</span> <span class="o">=</span> <span class="n">sent</span><span class="p">[</span><span class="n">l</span><span class="p">:</span><span class="n">r</span><span class="p">]</span>         <span class="c1">#字面值</span>
+                <span class="n">entity_type0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">choose_from</span><span class="p">(</span><span class="n">surface0</span><span class="p">,</span> <span class="n">entity_types</span><span class="p">)</span>
+                <span class="k">if</span> <span class="s2">&quot;freq&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">linking_strategy</span><span class="p">:</span>         <span class="c1"># 处理重叠消歧，目前只有freq策略能够做到</span>
+                    <span class="n">overlap_surface_entity_with_pos</span> <span class="o">=</span> <span class="p">{}</span>       <span class="c1"># 获得每个待链接字面值的“唯一”映射</span>
+                    <span class="n">overlap_surface_entity_with_pos</span><span class="p">[</span><span class="n">surface0</span><span class="p">]</span> <span class="o">=</span> <span class="p">([</span><span class="n">l</span><span class="p">,</span><span class="n">r</span><span class="p">],</span><span class="n">entity_type0</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">l</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="n">r</span><span class="p">):</span>
+                        <span class="n">rr</span><span class="p">,</span> <span class="n">entity_types_2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dig_trie</span><span class="p">(</span><span class="n">sent</span><span class="p">,</span> <span class="n">ll</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">rr</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                            <span class="n">surface0_2</span> <span class="o">=</span> <span class="n">sent</span><span class="p">[</span><span class="n">ll</span><span class="p">:</span><span class="n">rr</span><span class="p">]</span>  <span class="c1"># 字面值</span>
+                            <span class="n">entity_type0_2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">choose_from</span><span class="p">(</span><span class="n">surface0_2</span><span class="p">,</span> <span class="n">entity_types_2</span><span class="p">)</span>
+                            <span class="n">overlap_surface_entity_with_pos</span><span class="p">[</span><span class="n">surface0_2</span><span class="p">]</span> <span class="o">=</span> <span class="p">([</span><span class="n">ll</span><span class="p">,</span><span class="n">rr</span><span class="p">],</span> <span class="n">entity_type0_2</span><span class="p">)</span>
+                    <span class="c1"># 再利用频率比较这些映射</span>
+                    <span class="n">candidate</span><span class="p">,</span> <span class="n">cnt_cand</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">0</span>
+                    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">([</span><span class="n">ll</span><span class="p">,</span><span class="n">rr</span><span class="p">],</span> <span class="n">entity_type00</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">overlap_surface_entity_with_pos</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+                        <span class="n">entity00</span><span class="p">,</span> <span class="n">cnt0</span> <span class="o">=</span> <span class="n">entity_type00</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span>
+                        <span class="k">if</span> <span class="n">entity00</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_count</span><span class="p">:</span>
+                            <span class="n">cnt0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_count</span><span class="p">[</span><span class="n">entity00</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">cnt0</span> <span class="o">&gt;</span> <span class="n">cnt_cand</span><span class="p">:</span>
+                            <span class="n">candidate</span><span class="p">,</span> <span class="n">cnt_cand</span> <span class="o">=</span> <span class="p">([</span><span class="n">ll</span><span class="p">,</span><span class="n">rr</span><span class="p">],</span> <span class="n">entity_type00</span><span class="p">),</span> <span class="n">cnt0</span>
+                    <span class="n">entities_info</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span>
+                    <span class="n">l</span> <span class="o">=</span> <span class="n">candidate</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">entities_info</span><span class="o">.</span><span class="n">append</span><span class="p">(([</span><span class="n">l</span><span class="p">,</span> <span class="n">r</span><span class="p">],</span> <span class="n">entity_type0</span><span class="p">))</span>  <span class="c1"># 字典树能根据键找到实体范围，选择则依然需要根据历史等优化</span>
+                    <span class="n">l</span> <span class="o">=</span> <span class="n">r</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">l</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">entities_info</span></div>
+<div class="viewcode-block" id="HarvestText.decoref"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.decoref">[文档]</a>    <span class="k">def</span> <span class="nf">decoref</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sent</span><span class="p">,</span> <span class="n">entities_info</span><span class="p">):</span>
+        <span class="n">left</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">processed_text</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">beg</span><span class="p">,</span> <span class="n">end</span><span class="p">),</span> <span class="p">(</span><span class="n">entity</span><span class="p">,</span><span class="n">e_type</span><span class="p">)</span> <span class="ow">in</span> <span class="n">entities_info</span><span class="p">:</span>
+            <span class="c1"># processed_text += sent[left:beg] + entity</span>
+            <span class="n">processed_text</span> <span class="o">+=</span> <span class="n">sent</span><span class="p">[</span><span class="n">left</span><span class="p">:</span><span class="n">beg</span><span class="p">]</span> <span class="o">+</span> <span class="n">e_type</span>
+            <span class="n">left</span> <span class="o">=</span> <span class="n">end</span>
+        <span class="n">processed_text</span> <span class="o">+=</span> <span class="n">sent</span><span class="p">[</span><span class="n">left</span><span class="p">:]</span>
+        <span class="k">return</span> <span class="n">processed_text</span></div>
+<div class="viewcode-block" id="HarvestText.posseg"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.posseg">[文档]</a>    <span class="k">def</span> <span class="nf">posseg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sent</span><span class="p">,</span> <span class="n">standard_name</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">stopwords</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">standard_name</span> <span class="o">=</span> <span class="n">standard_name</span>
+        <span class="n">entities_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_linking</span><span class="p">(</span><span class="n">sent</span><span class="p">)</span>
+        <span class="n">sent2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoref</span><span class="p">(</span><span class="n">sent</span><span class="p">,</span> <span class="n">entities_info</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">flag</span> <span class="ow">in</span> <span class="n">pseg</span><span class="o">.</span><span class="n">cut</span><span class="p">(</span><span class="n">sent2</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">stopwords</span> <span class="ow">and</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">stopwords</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">word</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_types</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">standard_name</span><span class="p">:</span>
+                    <span class="n">word</span> <span class="o">=</span> <span class="n">entities_info</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>     <span class="c1"># 使用链接的实体</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">l</span><span class="p">,</span><span class="n">r</span> <span class="o">=</span> <span class="n">entities_info</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>        <span class="c1"># 或使用原文</span>
+                    <span class="n">word</span> <span class="o">=</span> <span class="n">sent</span><span class="p">[</span><span class="n">l</span><span class="p">:</span><span class="n">r</span><span class="p">]</span>
+                <span class="n">i</span> <span class="o">+=</span><span class="mi">1</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">word</span><span class="p">,</span> <span class="n">flag</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+<div class="viewcode-block" id="HarvestText.seg"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.seg">[文档]</a>    <span class="k">def</span> <span class="nf">seg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sent</span><span class="p">,</span> <span class="n">standard_name</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">stopwords</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">return_sent</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">standard_name</span> <span class="o">=</span> <span class="n">standard_name</span>
+        <span class="n">entities_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_linking</span><span class="p">(</span><span class="n">sent</span><span class="p">)</span>
+        <span class="n">sent2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoref</span><span class="p">(</span><span class="n">sent</span><span class="p">,</span> <span class="n">entities_info</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">jieba</span><span class="o">.</span><span class="n">cut</span><span class="p">(</span><span class="n">sent2</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">stopwords</span> <span class="ow">and</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">stopwords</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">word</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_types</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">standard_name</span><span class="p">:</span>
+                    <span class="n">word</span> <span class="o">=</span> <span class="n">entities_info</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>     <span class="c1"># 使用链接的实体</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">l</span><span class="p">,</span><span class="n">r</span> <span class="o">=</span> <span class="n">entities_info</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>        <span class="c1"># 或使用原文</span>
+                    <span class="n">word</span> <span class="o">=</span> <span class="n">sent</span><span class="p">[</span><span class="n">l</span><span class="p">:</span><span class="n">r</span><span class="p">]</span>
+                <span class="n">i</span> <span class="o">+=</span><span class="mi">1</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">word</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">return_sent</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">result</span></div>
+<div class="viewcode-block" id="HarvestText.cut_sentences"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.cut_sentences">[文档]</a>    <span class="k">def</span> <span class="nf">cut_sentences</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">para</span><span class="p">):</span>             <span class="c1"># 分句</span>
+        <span class="n">para</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;([。！？\?])([^”])&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s2">&quot;\1\n\2&quot;</span><span class="p">,</span> <span class="n">para</span><span class="p">)</span>  <span class="c1"># 单字符断句符</span>
+        <span class="n">para</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;(\.</span><span class="si">{6}</span><span class="s1">)([^”])&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s2">&quot;\1\n\2&quot;</span><span class="p">,</span> <span class="n">para</span><span class="p">)</span>  <span class="c1"># 英文省略号</span>
+        <span class="n">para</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;(\…</span><span class="si">{2}</span><span class="s1">)([^”])&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s2">&quot;\1\n\2&quot;</span><span class="p">,</span> <span class="n">para</span><span class="p">)</span>  <span class="c1"># 中文省略号</span>
+        <span class="n">para</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;(”)&#39;</span><span class="p">,</span> <span class="s1">&#39;”</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">para</span><span class="p">)</span>  <span class="c1"># 把分句符\n放到双引号后，注意前面的几句都小心保留了双引号</span>
+        <span class="n">para</span> <span class="o">=</span> <span class="n">para</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>  <span class="c1"># 段尾如果有多余的\n就去掉它</span>
+        <span class="c1"># 很多规则中会考虑分号;，但是这里我把它忽略不计，破折号、英文双引号等同样忽略，需要的再做些简单调整即可。</span>
+        <span class="k">return</span> <span class="n">para</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
+<div class="viewcode-block" id="HarvestText.clear"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.clear">[文档]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deprepare</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span></div>
+    <span class="c1">#</span>
+    <span class="c1"># 新词发现模块</span>
+    <span class="c1">#</span>
+<div class="viewcode-block" id="HarvestText.word_discover"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.word_discover">[文档]</a>    <span class="k">def</span> <span class="nf">word_discover</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">threshold_seeds</span><span class="o">=</span><span class="p">[],</span> <span class="n">auto_param</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                      <span class="n">excluding_types</span> <span class="o">=</span> <span class="p">[],</span> <span class="n">excluding_words</span><span class="o">=</span><span class="p">[],</span>     <span class="c1"># 可以排除已经登录的某些种类的实体，或者某些指定词</span>
+                      <span class="n">max_word_len</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">min_freq</span><span class="o">=</span><span class="mf">0.00005</span><span class="p">,</span> <span class="n">min_entropy</span><span class="o">=</span><span class="mf">1.4</span><span class="p">,</span> <span class="n">min_aggregation</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
+                      <span class="n">ent_threshold</span><span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">,</span><span class="n">mem_saving</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="c1"># 采用经验参数，此时后面的参数设置都无效</span>
+        <span class="k">if</span> <span class="n">auto_param</span><span class="p">:</span>               <span class="c1"># 根据自己的几个实验确定的参数估计值，没什么科学性，但是应该能得到还行的结果</span>
+            <span class="n">length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+            <span class="n">min_entropy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">length</span><span class="p">)</span> <span class="o">/</span> <span class="mi">10</span>
+            <span class="n">min_freq</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">0.00005</span><span class="p">,</span><span class="mf">20.0</span><span class="o">/</span><span class="n">length</span><span class="p">)</span>
+            <span class="n">min_aggregation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">length</span><span class="p">)</span> <span class="o">/</span> <span class="mi">15</span>
+            <span class="n">mem_saving</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">length</span><span class="o">&gt;</span><span class="mi">300000</span><span class="p">)</span>
+            <span class="c1"># ent_threshold: 确定左右熵的阈值对双侧都要求&quot;both&quot;，或者只要左右平均值达到&quot;avg&quot;</span>
+            <span class="c1"># 对于每句话都很极短的情况（如长度&lt;8），经常出现在左右边界的词语可能难以被确定，这时ent_threshold建议设为&quot;avg&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ws</span> <span class="o">=</span> <span class="n">WordDiscoverer</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">max_word_len</span><span class="p">,</span> <span class="n">min_freq</span><span class="p">,</span> <span class="n">min_entropy</span><span class="p">,</span> <span class="n">min_aggregation</span><span class="p">,</span> <span class="n">ent_threshold</span><span class="p">,</span> <span class="n">mem_saving</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;text&quot;</span><span class="p">:[],</span><span class="s2">&quot;freq&quot;</span><span class="p">:[],</span><span class="s2">&quot;left_ent&quot;</span><span class="p">:[],</span><span class="s2">&quot;right_ent&quot;</span><span class="p">:[],</span><span class="s2">&quot;agg&quot;</span><span class="p">:[]}</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">info</span><span class="p">)</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="n">info</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;text&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">info</span>
+        
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">excluding_types</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;#&quot;</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">excluding_types</span><span class="p">)[</span><span class="mi">0</span><span class="p">]:</span>              <span class="c1"># 化为无‘#’标签</span>
+                <span class="n">excluding_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">excluding_types</span><span class="p">]</span>
+            <span class="n">ex_mentions</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">enty</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_mention_dict</span>
+                             <span class="k">if</span> <span class="n">enty</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span> <span class="ow">and</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span><span class="p">[</span><span class="n">enty</span><span class="p">]</span> <span class="ow">in</span> <span class="n">excluding_types</span>
+                             <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_mention_dict</span><span class="p">[</span><span class="n">enty</span><span class="p">]]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ex_mentions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">ex_mentions</span> <span class="o">+=</span> <span class="n">excluding_words</span>
+        
+        <span class="n">info</span> <span class="o">=</span> <span class="n">ws</span><span class="o">.</span><span class="n">get_df_info</span><span class="p">(</span><span class="n">ex_mentions</span><span class="p">)</span>
+        
+        <span class="c1"># 利用种子词来确定筛选优质新词的标准，种子词中最低质量的词语将被保留（如果一开始就被找到的话）</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">threshold_seeds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">min_score</span> <span class="o">=</span> <span class="mi">100000</span>
+            <span class="k">for</span> <span class="n">seed</span> <span class="ow">in</span> <span class="n">threshold_seeds</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">seed</span> <span class="ow">in</span> <span class="n">info</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
+                    <span class="n">min_score</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">min_score</span><span class="p">,</span><span class="n">info</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">seed</span><span class="p">,</span><span class="s2">&quot;score&quot;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">min_score</span> <span class="o">&gt;=</span> <span class="mi">100000</span><span class="p">):</span>
+                <span class="n">min_score</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">min_score</span> <span class="o">*=</span> <span class="mf">0.9</span>          <span class="c1"># 留一些宽松的区间</span>
+                <span class="n">info</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;score&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">min_score</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">info</span></div>
+<div class="viewcode-block" id="HarvestText.add_new_words"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.add_new_words">[文档]</a>    <span class="k">def</span> <span class="nf">add_new_words</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">new_words</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">new_words</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">build_trie</span><span class="p">(</span><span class="n">word</span><span class="p">,</span><span class="n">word</span><span class="p">,</span><span class="s2">&quot;新词&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entity_mention_dict</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">word</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;新词&quot;</span>
+            <span class="k">if</span> <span class="n">word</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">type_entity_mention_dict</span><span class="p">[</span><span class="s2">&quot;新词&quot;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">type_entity_mention_dict</span><span class="p">[</span><span class="s2">&quot;新词&quot;</span><span class="p">][</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">word</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">type_entity_mention_dict</span><span class="p">[</span><span class="s2">&quot;新词&quot;</span><span class="p">][</span><span class="n">word</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">word</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_prepared</span><span class="p">()</span></div>
+<div class="viewcode-block" id="HarvestText.add_new_mentions"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.add_new_mentions">[文档]</a>    <span class="k">def</span> <span class="nf">add_new_mentions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">entity_mention_dict</span><span class="p">):</span>   <span class="c1"># 添加链接到已有实体的新别称，一般在新词发现的基础上筛选得到</span>
+        <span class="k">for</span> <span class="n">entity0</span> <span class="ow">in</span> <span class="n">entity_mention_dict</span><span class="p">:</span>
+            <span class="n">type0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span><span class="p">[</span><span class="n">entity0</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">mention0</span> <span class="ow">in</span> <span class="n">entity_mention_dict</span><span class="p">[</span><span class="n">entity0</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">entity_mention_dict</span><span class="p">[</span><span class="n">entity0</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">mention0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">build_trie</span><span class="p">(</span><span class="n">mention0</span><span class="p">,</span> <span class="n">entity0</span><span class="p">,</span> <span class="n">type0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">type_entity_mention_dict</span><span class="p">[</span><span class="n">type0</span><span class="p">][</span><span class="n">entity0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_mention_dict</span><span class="p">[</span><span class="n">entity0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_prepared</span><span class="p">()</span></div>
+<div class="viewcode-block" id="HarvestText.add_new_entity"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.add_new_entity">[文档]</a>    <span class="k">def</span> <span class="nf">add_new_entity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">entity0</span><span class="p">,</span><span class="n">mention0</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">type0</span><span class="o">=</span><span class="s2">&quot;添加词&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">mention0</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">mention0</span> <span class="o">=</span> <span class="n">entity0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span><span class="p">[</span><span class="n">entity0</span><span class="p">]</span> <span class="o">=</span> <span class="n">type0</span>
+        <span class="k">if</span> <span class="n">entity0</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_mention_dict</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entity_mention_dict</span><span class="p">[</span><span class="n">entity0</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">mention0</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entity_mention_dict</span><span class="p">[</span><span class="n">entity0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">mention0</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_trie</span><span class="p">(</span><span class="n">mention0</span><span class="p">,</span><span class="n">entity0</span><span class="p">,</span><span class="n">type0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">entity0</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">type_entity_mention_dict</span><span class="p">[</span><span class="n">type0</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">type_entity_mention_dict</span><span class="p">[</span><span class="n">type0</span><span class="p">][</span><span class="n">entity0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">mention0</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">type_entity_mention_dict</span><span class="p">[</span><span class="n">type0</span><span class="p">][</span><span class="n">entity0</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">mention0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_prepared</span><span class="p">()</span></div>
+<div class="viewcode-block" id="HarvestText.find_entity_with_rule"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.find_entity_with_rule">[文档]</a>    <span class="k">def</span> <span class="nf">find_entity_with_rule</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">rulesets</span><span class="o">=</span><span class="p">[],</span> <span class="n">add_to_dict</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">type0</span><span class="o">=</span><span class="s2">&quot;添加词&quot;</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        利用规则从分词结果中的词语找到实体，并可以赋予相应的类型再加入实体库</span>
+<span class="sd">        :param text: string, 一段文本</span>
+<span class="sd">        :param rulesets: list of (tuple of rules or single rule) from match_patterns,</span>
+<span class="sd">        list中包含多个规则，满足其中一种规则的词就认为属于这个type</span>
+<span class="sd">        而每种规则由tuple或单个条件(pattern)表示，一个词必须满足其中的一个或多个条件。</span>
+<span class="sd">        :param add_to_dict: 是否把找到的结果直接加入词典</span>
+<span class="sd">        :param type0: 赋予满足条件的词语的实体类型, 仅当add_to_dict时才有意义</span>
+<span class="sd">        :return: found_entities</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">found_entities</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">seg</span><span class="p">(</span><span class="n">text</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">ruleset</span> <span class="ow">in</span> <span class="n">rulesets</span><span class="p">:</span>                   <span class="c1"># 每个ruleset是或关系，只要满足一个就添加并跳过其他</span>
+                <span class="n">toAdd</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">ruleset</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)):</span>       <span class="c1"># tuple</span>
+                    <span class="k">for</span> <span class="n">pattern0</span> <span class="ow">in</span> <span class="n">ruleset</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">pattern0</span><span class="p">(</span><span class="n">word</span><span class="p">):</span>
+                            <span class="n">toAdd</span> <span class="o">=</span> <span class="kc">False</span>
+                            <span class="k">break</span>
+                <span class="k">else</span><span class="p">:</span>                                  <span class="c1"># single rule</span>
+                    <span class="n">pattern0</span> <span class="o">=</span> <span class="n">ruleset</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">pattern0</span><span class="p">(</span><span class="n">word</span><span class="p">):</span>
+                        <span class="n">toAdd</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">if</span> <span class="n">toAdd</span><span class="p">:</span>
+                    <span class="n">found_entities</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">word</span><span class="p">)</span>
+                    <span class="k">break</span>
+        <span class="k">if</span> <span class="n">add_to_dict</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">entity0</span> <span class="ow">in</span> <span class="n">found_entities</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add_new_entity</span><span class="p">(</span><span class="n">entity0</span><span class="p">,</span><span class="n">entity0</span><span class="p">,</span><span class="n">type0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prepare</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">found_entities</span></div>
+
+    <span class="c1">#</span>
+    <span class="c1"># 情感分析模块</span>
+    <span class="c1">#</span>
+<div class="viewcode-block" id="HarvestText.build_sent_dict"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.build_sent_dict">[文档]</a>    <span class="k">def</span> <span class="nf">build_sent_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sents</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;PMI&quot;</span><span class="p">,</span><span class="n">min_times</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">ft_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">ft_epochs</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">ft_window</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">pos_seeds</span><span class="o">=</span><span class="p">[],</span><span class="n">neg_seeds</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="n">docs</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">seg</span><span class="p">(</span><span class="n">sent</span><span class="p">)</span> <span class="k">for</span> <span class="n">sent</span> <span class="ow">in</span> <span class="n">sents</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sent_dict</span> <span class="o">=</span> <span class="n">SentDict</span><span class="p">(</span><span class="n">docs</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">min_times</span><span class="p">,</span><span class="n">ft_size</span><span class="p">,</span><span class="n">ft_epochs</span><span class="p">,</span><span class="n">ft_window</span><span class="p">,</span> <span class="n">pos_seeds</span><span class="p">,</span> <span class="n">neg_seeds</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sent_dict</span></div>
+<div class="viewcode-block" id="HarvestText.analyse_sent"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.analyse_sent">[文档]</a>    <span class="k">def</span> <span class="nf">analyse_sent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sent</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sent_dict</span><span class="o">.</span><span class="n">analyse_sent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seg</span><span class="p">(</span><span class="n">sent</span><span class="p">))</span></div>
+    <span class="c1">#</span>
+    <span class="c1"># 实体检索模块</span>
+    <span class="c1">#</span>
+<div class="viewcode-block" id="HarvestText.build_index"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.build_index">[文档]</a>    <span class="k">def</span> <span class="nf">build_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">docs</span><span class="p">,</span> <span class="n">with_entity</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">with_type</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+        <span class="n">inv_index</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">sent</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">docs</span><span class="p">):</span>
+            <span class="n">entities_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_linking</span><span class="p">(</span><span class="n">sent</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">span</span><span class="p">,</span> <span class="p">(</span><span class="n">entity</span><span class="p">,</span><span class="n">type0</span><span class="p">)</span> <span class="ow">in</span> <span class="n">entities_info</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">with_entity</span><span class="p">:</span>
+                    <span class="n">inv_index</span><span class="p">[</span><span class="n">entity</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">with_type</span><span class="p">:</span>
+                    <span class="n">inv_index</span><span class="p">[</span><span class="n">type0</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">inv_index</span></div>
+<div class="viewcode-block" id="HarvestText.get_entity_counts"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.get_entity_counts">[文档]</a>    <span class="k">def</span> <span class="nf">get_entity_counts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">docs</span><span class="p">,</span><span class="n">inv_index</span><span class="p">,</span><span class="n">used_type</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">used_type</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">entities</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span>
+                            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="ow">in</span> <span class="n">used_type</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">entities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="n">cnt</span> <span class="o">=</span> <span class="p">{</span><span class="n">enty</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">inv_index</span><span class="p">[</span><span class="n">enty</span><span class="p">])</span> <span class="k">for</span> <span class="n">enty</span> <span class="ow">in</span> <span class="n">entities</span> <span class="k">if</span> <span class="n">enty</span> <span class="ow">in</span> <span class="n">inv_index</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">cnt</span></div>
+<div class="viewcode-block" id="HarvestText.search_entity"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.search_entity">[文档]</a>    <span class="k">def</span> <span class="nf">search_entity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">query</span><span class="p">,</span><span class="n">docs</span><span class="p">,</span><span class="n">inv_index</span><span class="p">):</span>
+        <span class="n">words</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">ids</span> <span class="o">=</span> <span class="n">inv_index</span><span class="p">[</span><span class="n">words</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">words</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+                <span class="n">ids</span> <span class="o">=</span> <span class="n">ids</span> <span class="o">&amp;</span> <span class="n">inv_index</span><span class="p">[</span><span class="n">word</span><span class="p">]</span>
+            <span class="n">np_docs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">docs</span><span class="p">)[</span><span class="nb">list</span><span class="p">(</span><span class="n">ids</span><span class="p">)]</span>
+            <span class="k">return</span> <span class="n">np_docs</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span></div>
+    <span class="c1">#</span>
+    <span class="c1"># 文本摘要模块</span>
+    <span class="c1">#</span>
+<div class="viewcode-block" id="HarvestText.get_summary"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.get_summary">[文档]</a>    <span class="k">def</span> <span class="nf">get_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">docs</span><span class="p">,</span> <span class="n">topK</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">with_importance</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">standard_name</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+        <span class="k">def</span> <span class="nf">sent_sim1</span><span class="p">(</span><span class="n">words1</span><span class="p">,</span> <span class="n">words2</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">words1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">words2</span><span class="p">)))</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">words1</span><span class="p">))</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">words2</span><span class="p">)))</span>
+
+        <span class="c1"># 使用standard_name,相似度可以基于实体链接的结果计算而更加准确</span>
+        <span class="n">sents</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">seg</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span><span class="n">standard_name</span><span class="o">=</span><span class="n">standard_name</span><span class="p">)</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">docs</span><span class="p">]</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sents</span><span class="p">)),</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="n">G</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">sent_sim1</span><span class="p">(</span><span class="n">sents</span><span class="p">[</span><span class="n">u</span><span class="p">],</span> <span class="n">sents</span><span class="p">[</span><span class="n">v</span><span class="p">]))</span>
+
+        <span class="n">pr</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">pagerank_scipy</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+        <span class="n">pr_sorted</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">pr</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">with_importance</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[(</span><span class="n">docs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">imp</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">imp</span> <span class="ow">in</span> <span class="n">pr_sorted</span><span class="p">[:</span><span class="n">topK</span><span class="p">]]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">docs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">rank</span> <span class="ow">in</span> <span class="n">pr_sorted</span><span class="p">[:</span><span class="n">topK</span><span class="p">]]</span></div>
+    <span class="c1">#</span>
+    <span class="c1"># 实体网络模块</span>
+    <span class="c1">#</span>
+<div class="viewcode-block" id="HarvestText.build_entity_graph"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.build_entity_graph">[文档]</a>    <span class="k">def</span> <span class="nf">build_entity_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">docs</span><span class="p">,</span><span class="n">inv_index</span><span class="o">=</span><span class="p">{},</span><span class="n">used_types</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+        <span class="n">links</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">inv_index</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">sent</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">docs</span><span class="p">):</span>
+                <span class="n">entities_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_linking</span><span class="p">(</span><span class="n">sent</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">used_types</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">entities</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">entity</span> <span class="k">for</span> <span class="n">span</span><span class="p">,</span> <span class="p">(</span><span class="n">entity</span><span class="p">,</span><span class="n">type0</span><span class="p">)</span> <span class="ow">in</span> <span class="n">entities_info</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">entities</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">entity</span> <span class="k">for</span> <span class="n">span</span><span class="p">,</span> <span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">type0</span><span class="p">)</span> <span class="ow">in</span> <span class="n">entities_info</span> <span class="k">if</span> <span class="n">type0</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">in</span> <span class="n">used_types</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">u</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="n">entities</span><span class="p">,</span><span class="mi">2</span><span class="p">):</span>
+                    <span class="n">pair0</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">((</span><span class="n">u</span><span class="p">,</span><span class="n">v</span><span class="p">)))</span>
+                    <span class="k">if</span> <span class="n">pair0</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">links</span><span class="p">:</span>
+                        <span class="n">links</span><span class="p">[</span><span class="n">pair0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">links</span><span class="p">[</span><span class="n">pair0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>                                        <span class="c1"># 已经有倒排文档，可以更快速检索</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">used_types</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">entities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">entities</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">entity</span> <span class="k">for</span> <span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">type0</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">type0</span> <span class="ow">in</span> <span class="n">used_types</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="n">entities</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+                <span class="n">pair0</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">((</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)))</span>
+                <span class="n">ids</span> <span class="o">=</span> <span class="n">inv_index</span><span class="p">[</span><span class="n">u</span><span class="p">]</span> <span class="o">&amp;</span> <span class="n">inv_index</span><span class="p">[</span><span class="n">v</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">links</span><span class="p">[</span><span class="n">pair0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">u</span><span class="p">,</span><span class="n">v</span><span class="p">)</span> <span class="ow">in</span> <span class="n">links</span><span class="p">:</span>
+            <span class="n">G</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">u</span><span class="p">,</span><span class="n">v</span><span class="p">,</span><span class="n">weight</span><span class="o">=</span><span class="n">links</span><span class="p">[(</span><span class="n">u</span><span class="p">,</span><span class="n">v</span><span class="p">)])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_graph</span> <span class="o">=</span> <span class="n">G</span>
+        <span class="k">return</span> <span class="n">G</span></div>
+
+<div class="viewcode-block" id="HarvestText.build_word_ego_graph"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.build_word_ego_graph">[文档]</a>    <span class="k">def</span> <span class="nf">build_word_ego_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">docs</span><span class="p">,</span> <span class="n">word</span><span class="p">,</span> <span class="n">standard_name</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">min_freq</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">other_min_freq</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">stopwords</span> <span class="o">=</span> <span class="kc">None</span> <span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        根据文本和指定限定词，获得以限定词为中心的各词语的关系。</span>
+<span class="sd">        限定词可以是一个特定的方面（衣食住行这类文档），这样就可以从词语中心图中获得关于这个方面的简要信息</span>
+<span class="sd">        :param docs: 文本的列表</span>
+<span class="sd">        :param word: 限定词</span>
+<span class="sd">        :param standard_name: 把所有实体的指称化为标准实体名</span>
+<span class="sd">        :param stopwords: 需要过滤的停用词</span>
+<span class="sd">        :param min_freq: 作为边加入到图中的与中心词最小共现次数，用于筛掉可能过多的边</span>
+<span class="sd">        :param other_min_freq: 中心词以外词语关系的最小共现次数</span>
+<span class="sd">        :return: G（networxX中的Graph）</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+        <span class="n">links</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">other_min_freq</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">other_min_freq</span> <span class="o">=</span> <span class="n">min_freq</span>
+        <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">docs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">stopwords</span><span class="p">:</span>
+                <span class="n">words</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">seg</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span><span class="n">standard_name</span><span class="o">=</span><span class="n">standard_name</span><span class="p">)</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">stopwords</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">words</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">seg</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span><span class="n">standard_name</span><span class="o">=</span><span class="n">standard_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">words</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="n">words</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+                    <span class="n">pair0</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">((</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)))</span>
+                    <span class="k">if</span> <span class="n">pair0</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">links</span><span class="p">:</span>
+                        <span class="n">links</span><span class="p">[</span><span class="n">pair0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">links</span><span class="p">[</span><span class="n">pair0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">used_nodes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">word</span><span class="p">])</span>               <span class="c1"># 关系对中涉及的词语必须与实体有关（&gt;= min_freq）</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="ow">in</span> <span class="n">links</span><span class="p">:</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">links</span><span class="p">[(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)]</span>
+            <span class="k">if</span> <span class="n">word</span> <span class="ow">in</span> <span class="p">(</span><span class="n">u</span><span class="p">,</span><span class="n">v</span><span class="p">)</span> <span class="ow">and</span> <span class="n">w</span> <span class="o">&gt;=</span> <span class="n">min_freq</span><span class="p">:</span>
+                <span class="n">used_nodes</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">v</span> <span class="k">if</span> <span class="n">word</span> <span class="o">==</span> <span class="n">u</span> <span class="k">else</span> <span class="n">u</span><span class="p">)</span>
+                <span class="n">G</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">w</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">w</span> <span class="o">&gt;=</span> <span class="n">other_min_freq</span><span class="p">:</span>
+                <span class="n">G</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">w</span><span class="p">)</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">used_nodes</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">G</span></div>
+<div class="viewcode-block" id="HarvestText.build_entity_ego_graph"><a class="viewcode-back" href="../../harvesttext.html#harvesttext.harvesttext.HarvestText.build_entity_ego_graph">[文档]</a>    <span class="k">def</span> <span class="nf">build_entity_ego_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">docs</span><span class="p">,</span> <span class="n">word</span><span class="p">,</span> <span class="n">min_freq</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">inv_index</span><span class="o">=</span><span class="p">{},</span> <span class="n">used_types</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Entity only version of build_word_ego_graph()</span>
+<span class="sd">        :param docs:</span>
+<span class="sd">        :param word:</span>
+<span class="sd">        :param min_freq:</span>
+<span class="sd">        :param inv_index:</span>
+<span class="sd">        :param used_types:</span>
+<span class="sd">        :return:</span>
+<span class="sd">        </span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+        <span class="n">links</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">inv_index</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">related_docs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_entity</span><span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="n">docs</span><span class="p">,</span> <span class="n">inv_index</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">sent</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">related_docs</span><span class="p">):</span>
+                <span class="n">entities_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_linking</span><span class="p">(</span><span class="n">sent</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">used_types</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">entities</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">entity</span> <span class="k">for</span> <span class="n">span</span><span class="p">,</span> <span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">type0</span><span class="p">)</span> <span class="ow">in</span> <span class="n">entities_info</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">entities</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">entity</span> <span class="k">for</span> <span class="n">span</span><span class="p">,</span> <span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">type0</span><span class="p">)</span> <span class="ow">in</span> <span class="n">entities_info</span> <span class="k">if</span> <span class="n">type0</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">in</span> <span class="n">used_types</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="n">entities</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+                    <span class="n">pair0</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">((</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)))</span>
+                    <span class="k">if</span> <span class="n">pair0</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">links</span><span class="p">:</span>
+                        <span class="n">links</span><span class="p">[</span><span class="n">pair0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">links</span><span class="p">[</span><span class="n">pair0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># 已经有倒排文档，可以更快速检索</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">used_types</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">entities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">entities</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">entity</span> <span class="k">for</span> <span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">type0</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_type_dict</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">type0</span> <span class="ow">in</span> <span class="n">used_types</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="n">entities</span><span class="p">,</span><span class="mi">2</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">u</span> <span class="o">!=</span> <span class="n">word</span> <span class="ow">and</span> <span class="n">v</span> <span class="o">!=</span> <span class="n">word</span><span class="p">:</span>                 <span class="c1"># 因为是以限定词语为中心的图，所以其中必须包括限定词</span>
+                    <span class="k">continue</span>
+                <span class="n">pair0</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">((</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)))</span>
+                <span class="n">ids</span> <span class="o">=</span> <span class="n">inv_index</span><span class="p">[</span><span class="n">u</span><span class="p">]</span> <span class="o">&amp;</span> <span class="n">inv_index</span><span class="p">[</span><span class="n">v</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">links</span><span class="p">[</span><span class="n">pair0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span>
+        <span class="n">used_nodes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">word</span><span class="p">])</span>               <span class="c1"># 关系对中涉及的词语必须与实体有关（&gt;= min_freq）</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="ow">in</span> <span class="n">links</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">word</span> <span class="ow">in</span> <span class="p">(</span><span class="n">u</span><span class="p">,</span><span class="n">v</span><span class="p">)</span> <span class="ow">and</span> <span class="n">links</span><span class="p">[(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)]</span> <span class="o">&gt;=</span> <span class="n">min_freq</span><span class="p">:</span>
+                <span class="n">used_nodes</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">v</span> <span class="k">if</span> <span class="n">word</span> <span class="o">==</span> <span class="n">u</span> <span class="k">else</span> <span class="n">u</span><span class="p">)</span>
+            <span class="n">G</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="n">links</span><span class="p">[(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)])</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">G</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">used_nodes</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">G</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">harvesttext</a></h1>
+
+
+
+
+
+
+
+
+<h3>导航</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">模块代码</a><ul>
+  <li><a href="../harvesttext.html">harvesttext</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>快速搜索</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="转向" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, blmoistawinde.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

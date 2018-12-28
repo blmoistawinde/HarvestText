@@ -11,15 +11,16 @@ def new_word_discover():
     print(new_words)
 
 def new_word_register():
-    new_words = ["落叶球", "666"]
-    ht.add_new_words(new_words)
+    new_words = ["落叶球","666"]
+    ht.add_new_words(new_words)        # 作为广义上的"新词"登录
+    ht.add_new_entity("落叶球", mention0="落叶球", type0="术语") # 作为特定类型登录
     print(ht.seg("这个落叶球踢得真是666", return_sent=True))
     for word, flag in ht.posseg("这个落叶球踢得真是666"):
         print("%s:%s" % (word, flag), end=" ")
 
 def entity_segmentation():
     para = "上港的武磊和恒大的郜林，谁是中国最好的前锋？那当然是武磊武球王了，他是射手榜第一，原来是弱点的单刀也有了进步"
-    print("add entity info(mention, type)")
+    print("\nadd entity info(mention, type)")
     entity_mention_dict = {'武磊': ['武磊', '武球王'], '郜林': ['郜林', '郜飞机'], '前锋': ['前锋'], '上海上港': ['上港'], '广州恒大': ['恒大'],
                            '单刀球': ['单刀']}
     entity_type_dict = {'武磊': '球员', '郜林': '球员', '前锋': '位置', '上海上港': '球队', '广州恒大': '球队', '单刀球': '术语'}
@@ -104,10 +105,14 @@ def save_load_clear():
     print(ht2.seg(para))
 
 def load_resources():
-    from harvesttext import get_qh_sent_dict, get_sanguo, get_sanguo_entity_dict
+    from harvesttext.resources import get_qh_sent_dict,get_baidu_stopwords,get_sanguo,get_sanguo_entity_dict
     sdict = get_qh_sent_dict()              # {"pos":[积极词...],"neg":[消极词...]}
-    print("pos_words:",sdict["pos"][:5])
-    print("neg_words:",sdict["neg"][:5])
+    print("pos_words:",list(sdict["pos"])[10:15])
+    print("neg_words:",list(sdict["neg"])[5:10])
+
+    stopwords = get_baidu_stopwords()
+    print("stopwords:", list(stopwords)[5:10])
+
     docs = get_sanguo()                 # 文本列表，每个元素为一章的文本
     print("三国演义最后一章末16字:\n",docs[-1][-16:])
     entity_mention_dict, entity_type_dict = get_sanguo_entity_dict()
@@ -153,6 +158,61 @@ def linking_strategy():
               type_freq={"地名": -1})
 
 
+def find_with_rules():
+    from harvesttext.match_patterns import UpperFirst, AllEnglish, Contains, StartsWith, EndsWith
+    # some more patterns is provided
+    text0 = "我喜欢Python，因为requests库很适合爬虫"
+    ht0 = HarvestText()
+
+    found_entities = ht0.find_entity_with_rule(text0, rulesets=[AllEnglish()], type0="英文名")
+    print(found_entities)
+    print(ht0.posseg(text0))
+    print(ht0.mention2entity("Python"))
+
+
+    # Satisfying one of the rules
+    ht0.clear()
+    found_entities = ht0.find_entity_with_rule(text0,rulesets=[AllEnglish(),Contains("爬")],type0="技术")
+    print(found_entities)
+    print(ht0.posseg(text0))
+
+    # Satisfying a couple of rules [using tuple]
+    ht0.clear()
+    found_entities = ht0.find_entity_with_rule(text0, rulesets=[(AllEnglish(),UpperFirst())], type0="专有英文词")
+    print(found_entities)
+    print(ht0.posseg(text0))
+
+def build_word_ego_graph():
+    import networkx as nx
+    import matplotlib.pyplot as plt
+    plt.rcParams['font.sans-serif'] = ['SimHei']  # 步骤一（替换sans-serif字体）
+    plt.rcParams['axes.unicode_minus'] = False  # 步骤二（解决坐标轴负数的负号显示问题）
+    from harvesttext import get_sanguo, get_sanguo_entity_dict, get_baidu_stopwords
+
+    ht0 = HarvestText()
+    entity_mention_dict, entity_type_dict = get_sanguo_entity_dict()
+    ht0.add_entities(entity_mention_dict, entity_type_dict)
+    sanguo1 = get_sanguo()[0]
+    stopwords = get_baidu_stopwords()
+    docs = ht0.cut_sentences(sanguo1)
+    G = ht0.build_word_ego_graph(docs,"刘备",min_freq=3,other_min_freq=2,stopwords=stopwords)
+    pos = nx.kamada_kawai_layout(G)
+    nx.draw(G,pos)
+    nx.draw_networkx_labels(G,pos)
+    plt.show()
+
+def using_typed_words():
+    from harvesttext.resources import get_qh_typed_words,get_baidu_stopwords
+    ht0 = HarvestText()
+    typed_words, stopwords = get_qh_typed_words(), get_baidu_stopwords()
+    ht0.add_typed_words(typed_words)
+    print("加载清华领域词典，并使用停用词")
+    print("全部类型",typed_words.keys())
+    sentence = "THUOCL是自然语言处理的一套中文词库，词表来自主流网站的社会标签、搜索热词、输入法词库等。"
+    print(sentence)
+    print(ht0.posseg(sentence,stopwords=stopwords))
+    print("一些词语被赋予特殊类型IT,而“是”等词语被筛出。")
+
 if __name__ == "__main__":
     new_word_discover()
     new_word_register()
@@ -164,3 +224,7 @@ if __name__ == "__main__":
     save_load_clear()
     load_resources()
     linking_strategy()
+    find_with_rules()
+    load_resources()
+    using_typed_words()
+    build_word_ego_graph()
