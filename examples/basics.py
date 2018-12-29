@@ -200,6 +200,11 @@ def build_word_ego_graph():
     nx.draw(G,pos)
     nx.draw_networkx_labels(G,pos)
     plt.show()
+    G = ht0.build_entity_ego_graph(docs, "刘备", min_freq=3, other_min_freq=2)
+    pos = nx.kamada_kawai_layout(G)
+    nx.draw(G, pos)
+    nx.draw_networkx_labels(G, pos)
+    plt.show()
 
 def using_typed_words():
     from harvesttext.resources import get_qh_typed_words,get_baidu_stopwords

@@ -310,14 +310,17 @@ class HarvestText:
         else:
             return result
 
-    def cut_sentences(self, para):  # 分句
-        para = re.sub('([。！？\?])([^”])', r"\1\n\2", para)  # 单字符断句符
-        para = re.sub('(\.{6})([^”])', r"\1\n\2", para)  # 英文省略号
-        para = re.sub('(\…{2})([^”])', r"\1\n\2", para)  # 中文省略号
-        para = re.sub('(”)', '”\n', para)  # 把分句符\n放到双引号后，注意前面的几句都小心保留了双引号
+    def cut_sentences(self, para, drop_empty_line = True):  # 分句
+        para = re.sub('([。！？\?])([^”’])', r"\1\n\2", para)  # 单字符断句符
+        para = re.sub('(\.{6})([^”’])', r"\1\n\2", para)  # 英文省略号
+        para = re.sub('(\…{2})([^”’])', r"\1\n\2", para)  # 中文省略号
+        para = re.sub('([。！？\?][”’])([^，。！？\?])', r'\1\n\2', para)  # 把分句符\n放到双引号后，注意前面的几句都小心保留了双引号
         para = para.rstrip()  # 段尾如果有多余的\n就去掉它
         # 很多规则中会考虑分号;，但是这里我把它忽略不计，破折号、英文双引号等同样忽略，需要的再做些简单调整即可。
-        return para.split("\n")
+        sentences =  para.split("\n")
+        if drop_empty_line:
+            sentences = [sent for sent in sentences if len(sent.strip()) > 0]
+        return sentences
 
     def clear(self):
         self.deprepare()
@@ -492,13 +495,16 @@ class HarvestText:
     #
     # 文本摘要模块
     #
-    def get_summary(self, docs, topK=5, with_importance=False, standard_name=True):
+    def get_summary(self, docs, topK=5, stopwords=None, with_importance=False, standard_name=True):
         import networkx as nx
         def sent_sim1(words1, words2):
+            if len(words1) <= 1 or len(words2) <= 1:
+                return 0.0
             return (len(set(words1) & set(words2))) / (np.log2(len(words1)) + np.log2(len(words2)))
 
         # 使用standard_name,相似度可以基于实体链接的结果计算而更加准确
-        sents = [self.seg(doc, standard_name=standard_name) for doc in docs]
+        sents = [self.seg(doc.strip(), standard_name=standard_name, stopwords=stopwords) for doc in docs]
+        sents = [sent for sent in sents if len(sent) > 0]
         G = nx.Graph()
         for u, v in combinations(range(len(sents)), 2):
             G.add_edge(u, v, weight=sent_sim1(sents[u], sents[v]))
@@ -513,7 +519,7 @@ class HarvestText:
     #
     # 实体网络模块
     #
-    def build_entity_graph(self, docs, inv_index={}, used_types=[]):
+    def build_entity_graph(self, docs, min_freq=0, inv_index={}, used_types=[]):
         import networkx as nx
         G = nx.Graph()
         links = {}
@@ -541,7 +547,8 @@ class HarvestText:
                 if len(ids) > 0:
                     links[pair0] = len(ids)
         for (u, v) in links:
-            G.add_edge(u, v, weight=links[(u, v)])
+            if links[(u, v)] >= min_freq:
+                G.add_edge(u, v, weight=links[(u, v)])
         self.entity_graph = G
         return G
 
@@ -587,50 +594,40 @@ class HarvestText:
         G = G.subgraph(used_nodes).copy()
         return G
 
-    def build_entity_ego_graph(self, docs, word, min_freq=0, inv_index={}, used_types=[]):
+    def build_entity_ego_graph(self, docs, word, min_freq=0, other_min_freq=-1, inv_index={}, used_types=[]):
         '''
         Entity only version of build_word_ego_graph()
-        :param docs:
-        :param word:
-        :param min_freq:
-        :param inv_index:
-        :param used_types:
-        :return:
-
         '''
         import networkx as nx
         G = nx.Graph()
         links = {}
-        if len(inv_index) == 0:
+        if other_min_freq == -1:
+            other_min_freq = min_freq
+        if len(inv_index) != 0:
             related_docs = self.search_entity(word, docs, inv_index)
-            for i, sent in enumerate(related_docs):
-                entities_info = self.entity_linking(sent)
-                if len(used_types) == 0:
-                    entities = set(entity for span, (entity, type0) in entities_info)
-                else:
-                    entities = set(entity for span, (entity, type0) in entities_info if type0[1:-1] in used_types)
-                for u, v in combinations(entities, 2):
-                    pair0 = tuple(sorted((u, v)))
-                    if pair0 not in links:
-                        links[pair0] = 1
-                    else:
-                        links[pair0] += 1
-        else:  # 已经有倒排文档，可以更快速检索
+        else:
+            related_docs = [doc for doc in docs if word in self.entity_linking(doc,standard_name=True)]
+
+        for i, sent in enumerate(related_docs):
+            entities_info = self.entity_linking(sent)
             if len(used_types) == 0:
-                entities = self.entity_type_dict.keys()
+                entities = set(entity for span, (entity, type0) in entities_info)
             else:
-                entities = iter(entity for (entity, type0) in self.entity_type_dict.items() if type0 in used_types)
+                entities = set(entity for span, (entity, type0) in entities_info if type0[1:-1] in used_types)
             for u, v in combinations(entities, 2):
-                if u != word and v != word:  # 因为是以限定词语为中心的图，所以其中必须包括限定词
-                    continue
                 pair0 = tuple(sorted((u, v)))
-                ids = inv_index[u] & inv_index[v]
-                if len(ids) > 0:
-                    links[pair0] = len(ids)
+                if pair0 not in links:
+                    links[pair0] = 1
+                else:
+                    links[pair0] += 1
+
         used_nodes = set([word])  # 关系对中涉及的词语必须与实体有关（>= min_freq）
         for (u, v) in links:
-            if word in (u, v) and links[(u, v)] >= min_freq:
+            w = links[(u, v)]
+            if word in (u, v) and w >= min_freq:
                 used_nodes.add(v if word == u else u)
-            G.add_edge(u, v, weight=links[(u, v)])
+                G.add_edge(u, v, weight=w)
+            elif w >= other_min_freq:
+                G.add_edge(u, v, weight=w)
         G = G.subgraph(used_nodes).copy()
         return G
