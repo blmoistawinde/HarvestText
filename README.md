@@ -4,7 +4,7 @@ Sow with little data seed, harvest much from a text field.
 
 播撒几多种子词，收获万千领域实
 
-![PyPI - Python Version](https://img.shields.io/badge/python-3.6-blue.svg) ![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg) ![Version](https://img.shields.io/badge/version-V0.3-red.svg)
+![PyPI - Python Version](https://img.shields.io/badge/python-3.6-blue.svg) ![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg) ![Version](https://img.shields.io/badge/version-V0.4-red.svg)
 
 ## 用途
 HarvestText是一个专注无（弱）监督方法，能够整合领域知识（如类型，别名）对特定领域文本进行简单高效地处理和分析的库。
@@ -199,7 +199,7 @@ stopwords = get_baidu_stopwords()
 docs = ht0.cut_sentences(sanguo1)
 G = ht0.build_word_ego_graph(docs,"刘备",min_freq=3,other_min_freq=2,stopwords=stopwords)
 ```
-![word_ego_net](file:///./images/word_ego_net.jpg)
+![word_ego_net](/images/word_ego_net.jpg)
 
 刘关张之情谊，刘备投奔的靠山，以及刘备讨贼之经历尽在于此。
 
