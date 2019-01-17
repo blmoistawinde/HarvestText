@@ -7,6 +7,7 @@ import pickle
 def saveHT(htModel,filename):
     with open(filename, "wb") as f:
         htModel.prepared = False
+        htModel.hanlp_prepared = False
         pickle.dump(htModel,f)
 
 def loadHT(filename):

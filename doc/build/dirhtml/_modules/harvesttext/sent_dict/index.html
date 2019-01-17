@@ -1,0 +1,216 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh_CN">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>harvesttext.sent_dict &#8212; harvesttext V0.5 文档</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/translations.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="索引" href="../../../genindex/" />
+    <link rel="search" title="搜索" href="../../../search/" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>harvesttext.sent_dict 源代码</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">combinations</span>
+
+<div class="viewcode-block" id="SentDict"><a class="viewcode-back" href="../../../harvesttext/#harvesttext.sent_dict.SentDict">[文档]</a><span class="k">class</span> <span class="nc">SentDict</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">docs</span><span class="o">=</span><span class="p">[],</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;PMI&quot;</span><span class="p">,</span><span class="n">min_times</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">ft_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">ft_epochs</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">ft_window</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">pos_seeds</span><span class="o">=</span><span class="p">[],</span><span class="n">neg_seeds</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SentDict</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_sent_dict</span><span class="p">(</span><span class="n">docs</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">min_times</span><span class="p">,</span> <span class="n">ft_size</span><span class="p">,</span> <span class="n">ft_epochs</span><span class="p">,</span> <span class="n">ft_window</span><span class="p">,</span> <span class="n">pos_seeds</span><span class="p">,</span> <span class="n">neg_seeds</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">key</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sent_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+<div class="viewcode-block" id="SentDict.set_pos_seeds"><a class="viewcode-back" href="../../../harvesttext/#harvesttext.sent_dict.SentDict.set_pos_seeds">[文档]</a>    <span class="k">def</span> <span class="nf">set_pos_seeds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos_seeds</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pos_seeds</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">pos_seeds</span> <span class="k">if</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">words</span><span class="p">]</span></div>
+<div class="viewcode-block" id="SentDict.set_neg_seed"><a class="viewcode-back" href="../../../harvesttext/#harvesttext.sent_dict.SentDict.set_neg_seed">[文档]</a>    <span class="k">def</span> <span class="nf">set_neg_seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">neg_seeds</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">neg_seeds</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">neg_seeds</span> <span class="k">if</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">words</span><span class="p">]</span></div>
+<div class="viewcode-block" id="SentDict.build_sent_dict"><a class="viewcode-back" href="../../../harvesttext/#harvesttext.sent_dict.SentDict.build_sent_dict">[文档]</a>    <span class="k">def</span> <span class="nf">build_sent_dict</span><span class="p">(</span><span class="bp">self</span> <span class="p">,</span><span class="n">docs</span><span class="o">=</span><span class="p">[],</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;PMI&quot;</span><span class="p">,</span><span class="n">min_times</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="n">ft_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">ft_epochs</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span><span class="n">ft_window</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">pos_seeds</span><span class="o">=</span><span class="p">[],</span><span class="n">neg_seeds</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">doc_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">docs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">method</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">doc_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;PMI&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">co_occur</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">one_occur</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_word_stat</span><span class="p">(</span><span class="n">docs</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="n">word</span> <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">one_occur</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">one_occur</span><span class="p">[</span><span class="n">word</span><span class="p">]</span><span class="o">&gt;=</span><span class="n">min_times</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pos_seeds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">neg_seeds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>     <span class="c1"># 如果有新的输入，就更新种子词，否则默认已有（比如通过set已设定）</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">pos_seeds</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">pos_seeds</span> <span class="k">if</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">words</span><span class="p">]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">neg_seeds</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">neg_seeds</span> <span class="k">if</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">words</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_seeds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">neg_seeds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sent_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SO_PMI</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">words</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;fasttext&quot;</span><span class="p">:</span>
+                <span class="kn">from</span> <span class="nn">gensim.models</span> <span class="k">import</span> <span class="n">FastText</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fasttext</span> <span class="o">=</span> <span class="n">FastText</span><span class="p">(</span><span class="n">docs</span><span class="p">,</span><span class="nb">iter</span> <span class="o">=</span> <span class="n">ft_epochs</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">ft_size</span><span class="p">,</span><span class="n">window</span><span class="o">=</span><span class="n">ft_window</span><span class="p">,</span> <span class="n">min_count</span><span class="o">=</span><span class="n">min_times</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">words</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fasttext</span><span class="o">.</span><span class="n">wv</span><span class="o">.</span><span class="n">index2word</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pos_seeds</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">pos_seeds</span> <span class="k">if</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">words</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">neg_seeds</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">neg_seeds</span> <span class="k">if</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">words</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pos_seeds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">neg_seeds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sent_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SO_FastText</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">words</span><span class="p">)</span></div>
+<div class="viewcode-block" id="SentDict.analyse_sent"><a class="viewcode-back" href="../../../harvesttext/#harvesttext.sent_dict.SentDict.analyse_sent">[文档]</a>    <span class="k">def</span> <span class="nf">analyse_sent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">words</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;PMI&quot;</span><span class="p">:</span>
+            <span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="n">word</span> <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">words</span> <span class="k">if</span> <span class="n">word</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sent_dict</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sent_dict</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">words</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mi">0</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;fasttext&quot;</span><span class="p">:</span>
+            <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">senti</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">words</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">word</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sent_dict</span><span class="p">:</span>
+                    <span class="n">cnt</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">senti</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sent_dict</span><span class="p">[</span><span class="n">word</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">SO_ft0</span>  <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">FastTextSim</span><span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="n">seed</span><span class="p">)</span> <span class="k">for</span> <span class="n">seed</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos_seeds</span><span class="p">)</span> <span class="o">-</span> \
+                                <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">FastTextSim</span><span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="n">seed</span><span class="p">)</span> <span class="k">for</span> <span class="n">seed</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">neg_seeds</span><span class="p">)</span>
+                        <span class="n">cnt</span> <span class="o">+=</span> <span class="mi">1</span>
+                        <span class="n">senti</span> <span class="o">+=</span> <span class="n">SO_ft0</span>
+                    <span class="k">except</span><span class="p">:</span>
+                        <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">cnt</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mf">0.0</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">senti</span><span class="o">/</span><span class="n">cnt</span><span class="p">)</span></div>
+<div class="viewcode-block" id="SentDict.get_word_stat"><a class="viewcode-back" href="../../../harvesttext/#harvesttext.sent_dict.SentDict.get_word_stat">[文档]</a>    <span class="k">def</span> <span class="nf">get_word_stat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">docs</span><span class="p">,</span> <span class="n">co</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="n">co_occur</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>               <span class="c1"># 由于defaultdict太占内存，还是使用dict</span>
+        <span class="n">one_occur</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">docs</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">one_occur</span><span class="p">:</span>
+                    <span class="n">one_occur</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">one_occur</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">co</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span><span class="mi">2</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="n">co_occur</span><span class="p">:</span>
+                        <span class="n">co_occur</span><span class="p">[(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+                        <span class="n">co_occur</span><span class="p">[(</span><span class="n">b</span><span class="p">,</span><span class="n">a</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">co_occur</span><span class="p">[(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
+                        <span class="n">co_occur</span><span class="p">[(</span><span class="n">b</span><span class="p">,</span><span class="n">a</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">co_occur</span><span class="p">,</span><span class="n">one_occur</span></div>
+<div class="viewcode-block" id="SentDict.PMI"><a class="viewcode-back" href="../../../harvesttext/#harvesttext.sent_dict.SentDict.PMI">[文档]</a>    <span class="k">def</span> <span class="nf">PMI</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">w1</span><span class="p">,</span><span class="n">w2</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span><span class="p">((</span><span class="n">w1</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">one_occur</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">w2</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">one_occur</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">w1</span><span class="p">,</span><span class="n">w2</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">co_occur</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+        <span class="n">c1</span><span class="p">,</span> <span class="n">c2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">one_occur</span><span class="p">[</span><span class="n">w1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">one_occur</span><span class="p">[</span><span class="n">w2</span><span class="p">]</span>
+        <span class="n">c3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">co_occur</span><span class="p">[(</span><span class="n">w1</span><span class="p">,</span><span class="n">w2</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">((</span><span class="n">c3</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">doc_count</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">c1</span><span class="o">*</span><span class="n">c2</span><span class="p">))</span></div>
+<div class="viewcode-block" id="SentDict.SO_PMI"><a class="viewcode-back" href="../../../harvesttext/#harvesttext.sent_dict.SentDict.SO_PMI">[文档]</a>    <span class="k">def</span> <span class="nf">SO_PMI</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">words</span><span class="p">):</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">words</span><span class="p">:</span>
+            <span class="n">ret</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PMI</span><span class="p">(</span><span class="n">word</span><span class="p">,</span><span class="n">seed</span><span class="p">)</span> <span class="k">for</span> <span class="n">seed</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos_seeds</span><span class="p">)</span> <span class="o">-</span> \
+                    <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PMI</span><span class="p">(</span><span class="n">word</span><span class="p">,</span><span class="n">seed</span><span class="p">)</span> <span class="k">for</span> <span class="n">seed</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">neg_seeds</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ret</span></div>
+<div class="viewcode-block" id="SentDict.FastTextSim"><a class="viewcode-back" href="../../../harvesttext/#harvesttext.sent_dict.SentDict.FastTextSim">[文档]</a>    <span class="k">def</span> <span class="nf">FastTextSim</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">w1</span><span class="p">,</span><span class="n">w2</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">vec1</span><span class="p">,</span> <span class="n">vec2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fasttext</span><span class="o">.</span><span class="n">wv</span><span class="p">[</span><span class="n">w1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">fasttext</span><span class="o">.</span><span class="n">wv</span><span class="p">[</span><span class="n">w2</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">vec1</span><span class="p">,</span><span class="n">vec2</span><span class="p">)</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">vec1</span><span class="p">,</span><span class="n">vec1</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">vec2</span><span class="p">,</span><span class="n">vec2</span><span class="p">))</span></div>
+<div class="viewcode-block" id="SentDict.SO_FastText"><a class="viewcode-back" href="../../../harvesttext/#harvesttext.sent_dict.SentDict.SO_FastText">[文档]</a>    <span class="k">def</span> <span class="nf">SO_FastText</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">words</span><span class="p">):</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">words</span><span class="p">:</span>
+            <span class="n">ret</span><span class="p">[</span><span class="n">word</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">FastTextSim</span><span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="n">seed</span><span class="p">)</span> <span class="k">for</span> <span class="n">seed</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos_seeds</span><span class="p">)</span> <span class="o">-</span> \
+                        <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">FastTextSim</span><span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="n">seed</span><span class="p">)</span> <span class="k">for</span> <span class="n">seed</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">neg_seeds</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ret</span></div></div>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">docs</span> <span class="o">=</span> <span class="p">[[</span><span class="s2">&quot;武磊&quot;</span><span class="p">,</span><span class="s2">&quot;威武&quot;</span><span class="p">,</span><span class="s2">&quot;，&quot;</span><span class="p">,</span><span class="s2">&quot;中超&quot;</span><span class="p">,</span><span class="s2">&quot;第一&quot;</span><span class="p">,</span><span class="s2">&quot;射手&quot;</span><span class="p">,</span><span class="s2">&quot;太&quot;</span><span class="p">,</span><span class="s2">&quot;棒&quot;</span><span class="p">,</span><span class="s2">&quot;了&quot;</span><span class="p">,</span><span class="s2">&quot;！&quot;</span><span class="p">],</span>
+          <span class="p">[</span><span class="s2">&quot;武磊&quot;</span><span class="p">,</span><span class="s2">&quot;强&quot;</span><span class="p">,</span><span class="s2">&quot;，&quot;</span><span class="p">,</span><span class="s2">&quot;中超&quot;</span><span class="p">,</span><span class="s2">&quot;最&quot;</span><span class="p">,</span><span class="s2">&quot;棒&quot;</span><span class="p">,</span><span class="s2">&quot;球员&quot;</span><span class="p">],</span>
+          <span class="p">[</span><span class="s2">&quot;郜林&quot;</span><span class="p">,</span><span class="s2">&quot;不行&quot;</span><span class="p">,</span><span class="s2">&quot;，&quot;</span><span class="p">,</span><span class="s2">&quot;只会&quot;</span><span class="p">,</span><span class="s2">&quot;抱怨&quot;</span><span class="p">,</span><span class="s2">&quot;的&quot;</span><span class="p">,</span><span class="s2">&quot;球员&quot;</span><span class="p">,</span><span class="s2">&quot;注定&quot;</span><span class="p">,</span><span class="s2">&quot;上限&quot;</span><span class="p">,</span><span class="s2">&quot;了&quot;</span><span class="p">],</span>
+          <span class="p">[</span><span class="s2">&quot;郜林&quot;</span><span class="p">,</span><span class="s2">&quot;看来&quot;</span><span class="p">,</span><span class="s2">&quot;不行&quot;</span><span class="p">,</span><span class="s2">&quot;，&quot;</span><span class="p">,</span><span class="s2">&quot;已经&quot;</span><span class="p">,</span><span class="s2">&quot;到&quot;</span><span class="p">,</span><span class="s2">&quot;上限&quot;</span><span class="p">,</span><span class="s2">&quot;了&quot;</span><span class="p">]]</span>
+    <span class="n">sent_dict</span> <span class="o">=</span> <span class="n">SentDict</span><span class="p">(</span><span class="n">docs</span><span class="p">,</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;PMI&quot;</span><span class="p">,</span><span class="n">min_times</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">pos_seeds</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;棒&quot;</span><span class="p">],</span><span class="n">neg_seeds</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;不行&quot;</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;威武&quot;</span><span class="p">,</span> <span class="n">sent_dict</span><span class="p">[</span><span class="s2">&quot;威武&quot;</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;球员&quot;</span><span class="p">,</span> <span class="n">sent_dict</span><span class="p">[</span><span class="s2">&quot;球员&quot;</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;上限&quot;</span><span class="p">,</span> <span class="n">sent_dict</span><span class="p">[</span><span class="s2">&quot;上限&quot;</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">sent_dict</span><span class="o">.</span><span class="n">analyse_sent</span><span class="p">(</span><span class="n">docs</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="n">sent_dict</span> <span class="o">=</span> <span class="n">SentDict</span><span class="p">(</span><span class="n">docs</span><span class="p">,</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;fasttext&quot;</span><span class="p">,</span><span class="n">min_times</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">pos_seeds</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;棒&quot;</span><span class="p">],</span><span class="n">neg_seeds</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;不行&quot;</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;威武&quot;</span><span class="p">,</span> <span class="n">sent_dict</span><span class="p">[</span><span class="s2">&quot;威武&quot;</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;球员&quot;</span><span class="p">,</span> <span class="n">sent_dict</span><span class="p">[</span><span class="s2">&quot;球员&quot;</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;上限&quot;</span><span class="p">,</span> <span class="n">sent_dict</span><span class="p">[</span><span class="s2">&quot;上限&quot;</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">sent_dict</span><span class="o">.</span><span class="n">analyse_sent</span><span class="p">(</span><span class="n">docs</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../">harvesttext</a></h1>
+
+
+
+
+
+
+
+
+<h3>导航</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../">Documentation overview</a><ul>
+  <li><a href="../../">模块代码</a><ul>
+  <li><a href="../">harvesttext</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>快速搜索</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search/" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="转向" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, blmoistawinde.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

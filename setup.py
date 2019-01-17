@@ -7,7 +7,7 @@ setup(
     name='harvesttext',
     author="blmoistawinde",
     author_email="1840962220@qq.com",
-    version = "0.4.1",
+    version = "0.5",
     license='MIT',
     keywords='NLP, tokenizing, entity linking, sentiment analysis',
     url='https://github.com/blmoistawinde/HarvestText',
@@ -27,7 +27,9 @@ setup(
         "jieba",
         "numpy",
         "pandas",
-        "networkx"
+        "networkx",
+        "pypinyin",
+        "pyhanlp",
     ],
     include_package_data = True,
     package_data ={"harvesttext":["resources/*"],}

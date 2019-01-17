@@ -1,6 +1,7 @@
 # coding=utf-8
 import os
 import re
+import json
 import numpy as np
 import pandas as pd
 from itertools import combinations
@@ -10,6 +11,7 @@ from collections import defaultdict
 from .word_discoverer import WordDiscoverer
 from .sent_dict import SentDict
 import logging
+from pypinyin import lazy_pinyin, pinyin
 
 
 class HarvestText:
@@ -20,14 +22,19 @@ class HarvestText:
         self.entity_mention_dict = defaultdict(set)
         self.entity_type_dict = {}
         self.type_entity_mention_dict = defaultdict(dict)
+        self.pinyin_mention_dict = defaultdict(set)
+        self.mentions = set()
         self.prepared = False
+        self.hanlp_prepared = False
         self.sent_dict = None
         # self.check_overlap = True                       # 是否检查重叠实体（市长江大桥），开启的话可能会较慢
         # 因为只有"freq"策略能够做，所以目前设定：指定freq策略时就默认检查重叠,否则不检查
         self.linking_strategy = "None"  # 将字面值链接到实体的策略，默认为选取字典序第一个
         self.entity_count = defaultdict(int)  # 用于'freq'策略
         self.latest_mention = dict()  # 用于'latest'策略
-
+        pwd = os.path.abspath(os.path.dirname(__file__))
+        with open(pwd + "/resources/pinyin_adjlist.json", "r", encoding="utf-8") as f:
+            self.pinyin_adjlist = json.load(f)
     #
     # 实体分词模块
     #
@@ -36,6 +43,9 @@ class HarvestText:
         if not type0 in self.entity_types:
             self.entity_types.add(type0)
             self.prepared = False
+        self.mentions.add(new_word)
+        self.pinyin_mention_dict[tuple(lazy_pinyin(new_word))].add(new_word)
+
         trie_node = self.trie_root
         for ch in new_word:
             if not ch in trie_node:
@@ -119,6 +129,15 @@ class HarvestText:
         self.prepared = True
         for type0 in self.entity_types:
             jieba.add_word(type0, freq=10000, tag=type0[1:-1])
+    def hanlp_prepare(self):
+        from pyhanlp import HanLP, JClass
+        CustomDictionary = JClass("com.hankcs.hanlp.dictionary.CustomDictionary")
+        StandardTokenizer = JClass("com.hankcs.hanlp.tokenizer.NLPTokenizer")
+
+        self.hanlp_prepared = True
+        for type0 in self.entity_types:
+            CustomDictionary.insert(type0, "%s 1000" % (type0[1:-1]))  # 动态增加
+        StandardTokenizer.ANALYZER.enableCustomDictionaryForcing(True)
 
     def deprepare(self):
         self.prepared = False
@@ -147,6 +166,28 @@ class HarvestText:
             return len(sent), trie_node["leaf"]
         else:
             return -1, set()  # -1表示未找到
+    def search_word_trie(self, word, tolerance=1):
+        """
+
+        :param word:
+        :param tolerance:
+        :return:
+        """
+        results = set()
+        def _visit(_trie, _word, _tolerance, _mention):
+            if len(_word) > 0:
+                ch = _word[0]
+                if ch in _trie:
+                    _visit(_trie[ch], _word[1:], _tolerance, _mention+ch)
+                if _tolerance:
+                    for ch in _trie:
+                        if ch not in [_word[0], 'leaf']:
+                            _visit(_trie[ch], _word[1:], _tolerance - 1, _mention+ch)
+            else:
+                if 'leaf' in _trie:
+                    results.add(_mention)
+        _visit(self.trie_root, word, tolerance,"")
+        return list(results)
 
     def set_linking_strategy(self, strategy, lastest_mention=None, entity_freq=None, type_freq=None):
         """
@@ -181,6 +222,11 @@ class HarvestText:
                 for type0, freq0 in type_freq.items():
                     for entity0 in self.type_entity_mention_dict[type0].keys():
                         self.entity_count[entity0] += freq0
+    def _link_record(self, surface0, entity0):
+        if "latest" in self.linking_strategy:
+            self.latest_mention[surface0] = entity0
+        if "freq" in self.linking_strategy:
+            self.entity_count[entity0] += 1
 
     def choose_from(self, surface0, entity_types):
         if self.linking_strategy == "None":
@@ -206,26 +252,63 @@ class HarvestText:
                         linked_entity_type = candidate
             if linked_entity_type is None:
                 linked_entity_type = list(entity_types)[0]
-        if "latest" in self.linking_strategy:
-            self.latest_mention[surface0] = linked_entity_type[0]
-        if "freq" in self.linking_strategy:
-            self.entity_count[linked_entity_type[0]] += 1
+        self._link_record(surface0, linked_entity_type[0])
+
         return linked_entity_type
 
     def mention2entity(self, mention):
         '''
         找到单个指称对应的实体
         :param mention:  指称
-        :return: 如果存在对应实体，则返回（实体,类型），否则返回None
+        :return: 如果存在对应实体，则返回（实体,类型），否则返回None, None
         '''
         r, entity_types = self.dig_trie(mention, 0)
         if r != -1:
             surface0 = mention[0:r]  # 字面值
             (entity0, type0) = self.choose_from(surface0, entity_types)
             return entity0, type0
+        return None, None
 
-    def entity_linking(self, sent):
-        self.check_prepared()
+    def get_pinyin_correct_candidates(self, word):  # 默认最多容忍一个拼音的变化
+        pinyins = lazy_pinyin(word)
+        tmp = pinyins[:]
+        pinyin_cands = {tuple(pinyins)}
+        for i, pinyin in enumerate(pinyins):
+            if pinyin in self.pinyin_adjlist:
+                pinyin_cands |= {tuple(tmp[:i] + [neibr] + tmp[i + 1:]) for neibr in self.pinyin_adjlist[pinyin]}
+        pinyin_cands = pinyin_cands & set(self.pinyin_mention_dict.keys())
+        mention_cands = set()
+        for pinyin in pinyin_cands:
+            mention_cands |= self.pinyin_mention_dict[pinyin]
+        return list(mention_cands)
+
+    def choose_from_multi_mentions(self,mention_cands,sent=""):
+        ## TODO: 结合上下文，统计信息，更复杂的链接策略+筛选策略（不是每个候选指称都是应该被链接的）
+        surface0 = mention_cands[0]
+        entity0, type0 = self.mention2entity(surface0)
+        self._link_record(surface0, entity0)
+        return entity0, type0
+
+
+
+    def _entity_recheck(self, sent, entities_info, pinyin_recheck, char_recheck):
+        sent2 = self.decoref(sent, entities_info)
+        for word, flag in pseg.cut(sent2):
+            if flag.startswith("n"):  # 对于名词，再检查是否有误差范围内匹配的其他指称
+                entity0, type0 = None, None
+                mention_cands = []
+                if pinyin_recheck:
+                    mention_cands += self.get_pinyin_correct_candidates(word)
+                if char_recheck:
+                    mention_cands += self.search_word_trie(word)
+
+                if len(mention_cands) > 0:
+                    entity0, type0 = self.choose_from_multi_mentions(mention_cands, sent)
+                if entity0:
+                    l = sent.find(word)
+                    entities_info.append([(l,l+len(word)),(entity0, type0)])
+
+    def _entity_linking(self, sent, pinyin_recheck=False, char_recheck=False):
         entities_info = []
         l = 0
         while l < len(sent):
@@ -259,6 +342,38 @@ class HarvestText:
                 l += 1
         return entities_info
 
+    def entity_linking(self, sent, pinyin_recheck=False, char_recheck=False):
+        self.check_prepared()
+        entities_info = self._entity_linking(sent, pinyin_recheck, char_recheck)
+        if pinyin_recheck or char_recheck:
+            self._entity_recheck(sent, entities_info, pinyin_recheck, char_recheck)
+        return entities_info
+
+    def get_linking_mention_candidates(self, sent, pinyin_recheck=False, char_recheck=False):
+        mention_cands = defaultdict(list)
+        cut_result = []
+        self.check_prepared()
+        entities_info = self._entity_linking(sent, pinyin_recheck, char_recheck)
+        sent2 = self.decoref(sent, entities_info)
+        l = 0
+        i = 0
+        for word, flag in pseg.cut(sent2):
+            if word in self.entity_types:
+                word = entities_info[i][1][0]  # 使用链接的实体
+                i += 1
+            cut_result.append(word)
+            if flag.startswith("n"):  # 对于名词，再检查是否有误差范围内匹配的其他指称
+                cands = []
+                if pinyin_recheck:
+                    cands += self.get_pinyin_correct_candidates(word)
+                if char_recheck:
+                    cands += self.search_word_trie(word)
+                if len(cands) > 0:
+                    mention_cands[(l, l + len(word))] = set(cands)
+            l += len(word)
+        sent2 =  "".join(cut_result)
+        return sent2, mention_cands
+
     def decoref(self, sent, entities_info):
         left = 0
         processed_text = ""
@@ -287,7 +402,6 @@ class HarvestText:
                 i += 1
             result.append((word, flag))
         return result
-
     def seg(self, sent, standard_name=False, stopwords=None, return_sent=False):
         self.standard_name = standard_name
         entities_info = self.entity_linking(sent)
@@ -314,13 +428,144 @@ class HarvestText:
         para = re.sub('([。！？\?])([^”’])', r"\1\n\2", para)  # 单字符断句符
         para = re.sub('(\.{6})([^”’])', r"\1\n\2", para)  # 英文省略号
         para = re.sub('(\…{2})([^”’])', r"\1\n\2", para)  # 中文省略号
-        para = re.sub('([。！？\?][”’])([^，。！？\?])', r'\1\n\2', para)  # 把分句符\n放到双引号后，注意前面的几句都小心保留了双引号
+        para = re.sub('([。！？\?][”’])([^，。！？\?])', r'\1\n\2', para)
+        # 如果双引号前有终止符，那么双引号才是句子的终点，把分句符\n放到双引号后，注意前面的几句都小心保留了双引号
         para = para.rstrip()  # 段尾如果有多余的\n就去掉它
         # 很多规则中会考虑分号;，但是这里我把它忽略不计，破折号、英文双引号等同样忽略，需要的再做些简单调整即可。
         sentences =  para.split("\n")
         if drop_empty_line:
             sentences = [sent for sent in sentences if len(sent.strip()) > 0]
         return sentences
+
+    def named_entity_recognition(self, sent, standard_name=False):
+        """
+        利用pyhanlp的命名实体识别，找到句子中的（人名，地名，机构名）三种实体。harvesttext会预先链接已知实体
+        :param sent:
+        :param standard_name:
+        :return: 发现的命名实体信息，字典 {实体名: 实体类型}
+        """
+        from pyhanlp import HanLP, JClass
+        if not self.hanlp_prepared:
+            self.hanlp_prepare()
+        self.standard_name = standard_name
+        entities_info = self.entity_linking(sent)
+        sent2 = self.decoref(sent, entities_info)
+        StandardTokenizer = JClass("com.hankcs.hanlp.tokenizer.StandardTokenizer")
+        StandardTokenizer.SEGMENT.enableAllNamedEntityRecognize(True)
+        entity_type_dict = {}
+        for x in StandardTokenizer.segment(sent2):
+            # 三种前缀代表：人名（nr），地名（ns），机构名（nt）
+            tag0 = str(x.nature)
+            if tag0.startswith("nr"):
+                entity_type_dict[x.word] = "人名"
+            elif tag0.startswith("ns"):
+                entity_type_dict[x.word] = "地名"
+            elif tag0.startswith("nt"):
+                entity_type_dict[x.word] = "机构名"
+        return entity_type_dict
+    def dependency_parse(self, sent, standard_name=False, stopwords=None):
+        """
+        依存句法分析，调用pyhanlp的接口，并且融入了harvesttext的实体识别机制。
+        不保证高准确率。
+        :param sent:
+        :param standard_name:
+        :param stopwords:
+        :return: arcs：依存弧,列表中的列表。
+        [[词语id,词语字面值或实体名(standard_name控制),词性，依存关系，依存子词语id] for 每个词语]
+        """
+        from pyhanlp import HanLP, JClass
+        if not self.hanlp_prepared:
+            self.hanlp_prepare()
+        self.standard_name = standard_name
+        entities_info = self.entity_linking(sent)
+        sent2 = self.decoref(sent, entities_info)
+        # [word.ID-1, word.LEMMA, word.POSTAG, word.DEPREL ,word.HEAD.ID-1]
+        arcs = []
+        i = 0
+        sentence = HanLP.parseDependency(sent2)
+        for word in sentence.iterator():
+            word0, tag0 = word.LEMMA, word.POSTAG
+            if stopwords and word0 in stopwords:
+                continue
+            if word0 in self.entity_types:
+                if self.standard_name:
+                    word0 = entities_info[i][1][0]  # 使用链接的实体
+                else:
+                    l, r = entities_info[i][0]  # 或使用原文
+                    word0 = sent[l:r]
+                tag0 = entities_info[i][1][1][1:-1]
+                i += 1
+            arcs.append([word.ID-1, word0, tag0, word.DEPREL ,word.HEAD.ID-1])
+        return arcs
+
+    def triple_extraction(self, sent, standard_name=False, stopwords=None):
+        """
+        利用主谓宾等依存句法关系，找到句子中有意义的三元组。
+        很多代码参考：https://github.com/liuhuanyong/EventTriplesExtraction
+        不保证高准确率。
+        :param sent:
+        :param standard_name:
+        :param stopwords:
+        :return:
+        """
+        arcs = self.dependency_parse(sent, standard_name, stopwords)
+
+        '''对找出的主语或者宾语进行扩展'''
+        def complete_e(words, postags, child_dict_list, word_index):
+            child_dict = child_dict_list[word_index]
+            prefix = ''
+            if '定中关系' in child_dict:
+                for i in range(len(child_dict['定中关系'])):
+                    prefix += complete_e(words, postags, child_dict_list, child_dict['定中关系'][i])
+            postfix = ''
+            if postags[word_index] == 'v':
+                if '动宾关系' in child_dict:
+                    postfix += complete_e(words, postags, child_dict_list, child_dict['动宾关系'][0])
+                if '主谓关系' in child_dict:
+                    prefix = complete_e(words, postags, child_dict_list, child_dict['主谓关系'][0]) + prefix
+
+            return prefix + words[word_index] + postfix
+
+        words, postags = ["" for i in range(len(arcs))], ["" for i in range(len(arcs))]
+        child_dict_list = [defaultdict(list) for i in range(len(arcs))]
+        for i, format_parse in enumerate(arcs):
+            id0, words[i], postags[i], rel, headID = format_parse
+            child_dict_list[headID][rel].append(i)
+        svos = []
+        for index in range(len(postags)):
+            # 使用依存句法进行抽取
+            if postags[index]:
+                # 抽取以谓词为中心的事实三元组
+                child_dict = child_dict_list[index]
+                # 主谓宾
+                if '主谓关系' in child_dict and '动宾关系' in child_dict:
+                    r = words[index]
+                    e1 = complete_e(words, postags, child_dict_list, child_dict['主谓关系'][0])
+                    e2 = complete_e(words, postags, child_dict_list, child_dict['动宾关系'][0])
+                    svos.append([e1, r, e2])
+
+                # 定语后置，动宾关系
+                relation = arcs[index][2]
+                head = arcs[index][0]
+                if relation == '定中关系':
+                    if '动宾关系' in child_dict:
+                        e1 = complete_e(words, postags, child_dict_list, head - 1)
+                        r = words[index]
+                        e2 = complete_e(words, postags, child_dict_list, child_dict['动宾关系'][0])
+                        temp_string = r + e2
+                        if temp_string == e1[:len(temp_string)]:
+                            e1 = e1[len(temp_string):]
+                        if temp_string not in e1:
+                            svos.append([e1, r, e2])
+                # 含有介宾关系的主谓动补关系
+                if '主谓关系' in child_dict and '动补结构' in child_dict:
+                    e1 = complete_e(words, postags, child_dict_list, child_dict['主谓关系'][0])
+                    CMP_index = child_dict['动补结构'][0]
+                    r = words[index] + words[CMP_index]
+                    if '介宾关系' in child_dict_list[CMP_index]:
+                        e2 = complete_e(words, postags, child_dict_list, child_dict_list[CMP_index]['介宾关系'][0])
+                        svos.append([e1, r, e2])
+        return svos
 
     def clear(self):
         self.deprepare()
@@ -606,7 +851,12 @@ class HarvestText:
         if len(inv_index) != 0:
             related_docs = self.search_entity(word, docs, inv_index)
         else:
-            related_docs = [doc for doc in docs if word in self.entity_linking(doc,standard_name=True)]
+            related_docs = []
+            for doc in docs:
+                entities_info = self.entity_linking(doc)
+                entities = [entity0 for [[l,r], (entity0,type0)] in entities_info]
+                if word in entities:
+                    related_docs.append(doc)
 
         for i, sent in enumerate(related_docs):
             entities_info = self.entity_linking(sent)

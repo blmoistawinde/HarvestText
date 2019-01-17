@@ -201,7 +201,7 @@ def build_word_ego_graph():
     nx.draw_networkx_labels(G,pos)
     plt.show()
     G = ht0.build_entity_ego_graph(docs, "刘备", min_freq=3, other_min_freq=2)
-    pos = nx.kamada_kawai_layout(G)
+    pos = nx.spring_layout(G)
     nx.draw(G, pos)
     nx.draw_networkx_labels(G, pos)
     plt.show()
@@ -218,7 +218,37 @@ def using_typed_words():
     print(ht0.posseg(sentence,stopwords=stopwords))
     print("一些词语被赋予特殊类型IT,而“是”等词语被筛出。")
 
+def entity_error_check():
+    ht0 = HarvestText()
+    typed_words = {"人名":["武磊"]}
+    ht0.add_typed_words(typed_words)
+    sent1 = "武磊和吴力只差一个拼音"
+    print(sent1)
+    print(ht0.entity_linking(sent1, pinyin_recheck=True))
+    sent2 = "武磊和吴磊只差一个字"
+    print(sent2)
+    print(ht0.entity_linking(sent2, char_recheck=True))
+    sent3 = "吴磊和吴力都可能是武磊的代称"
+    print(sent3)
+    print(ht0.get_linking_mention_candidates(sent3, pinyin_recheck=True, char_recheck=True))
+
+def depend_parse():
+    ht0 = HarvestText()
+    para = "上港的武磊武球王是中国最好的前锋。"
+    entity_mention_dict = {'武磊': ['武磊', '武球王'], "上海上港":["上港"]}
+    entity_type_dict = {'武磊': '球员', "上海上港":"球队"}
+    ht0.add_entities(entity_mention_dict, entity_type_dict)
+    for arc in ht0.dependency_parse(para):
+        print(arc)
+    print(ht0.triple_extraction(para))
+
+def named_entity_recognition():
+    ht0 = HarvestText()
+    sent = "上海上港足球队的武磊是中国最好的前锋。"
+    print(ht0.named_entity_recognition(sent))
+
 if __name__ == "__main__":
+    depend_parse()
     new_word_discover()
     new_word_register()
     entity_segmentation()
@@ -233,3 +263,5 @@ if __name__ == "__main__":
     load_resources()
     using_typed_words()
     build_word_ego_graph()
+    entity_error_check()
+    named_entity_recognition()

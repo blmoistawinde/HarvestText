@@ -4,7 +4,7 @@ Sow with little data seed, harvest much from a text field.
 
 播撒几多种子词，收获万千领域实
 
-![PyPI - Python Version](https://img.shields.io/badge/python-3.6-blue.svg) ![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg) ![Version](https://img.shields.io/badge/version-V0.4-red.svg)
+![PyPI - Python Version](https://img.shields.io/badge/python-3.6-blue.svg) ![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg) ![Version](https://img.shields.io/badge/version-V0.5-red.svg)
 
 ## 用途
 HarvestText是一个专注无（弱）监督方法，能够整合领域知识（如类型，别名）对特定领域文本进行简单高效地处理和分析的库。
@@ -16,14 +16,20 @@ HarvestText是一个专注无（弱）监督方法，能够整合领域知识（
 	- 可包含指定词和类别的分词。充分考虑省略号，双引号等特殊标点的分句。
 - [实体链接](#实体链接)
 	- 把别名，缩写与他们的标准名联系起来。 
+- [命名实体识别](#命名实体识别)
+	- 找到一句句子中的人名，地名，机构名等命名实体。
+- [依存句法分析](#依存句法分析)
+	- 分析语句中各个词语（包括链接到的实体）的主谓宾语修饰等语法关系，并以此提取可能的事件三元组。
+- [内置资源](#内置资源)
+	- 通用停用词，通用情感词，IT、财经、饮食、法律等领域词典。可直接用于以上任务。
+- [字符拼音纠错](#字符拼音纠错)
+	- 把语句中有可能是已知实体的错误拼写（误差一个字符或拼音）的词语链接到对应实体。
 - [情感分析](#情感分析)
 	- 给出少量种子词（通用的褒贬义词语），得到语料中各个词语和语段的褒贬度。
 - [信息检索](#信息检索)
 	- 统计特定实体出现的位置，次数等。
 - [关系网络](#关系网络)
 	- 利用共现关系，获得关键词之间的网络。或者以一个给定词语为中心，探索与其相关的词语网络。
-- [内置资源](#内置资源)
-	- 通用停用词，通用情感词，IT、财经、饮食、法律等领域词典。可直接用于以上任务。
 - [新词发现](#新词发现)
 	- 利用统计规律（或规则）发现语料中可能会被传统分词遗漏的特殊词汇。也便于从文本中快速筛选出关键词。
 - [文本摘要](#文本摘要)
@@ -119,9 +125,88 @@ print(ht.cut_sentences(para))
 \*现在本库能够也用一些基本策略来处理复杂的实体消歧任务（比如一词多义【"老师"是指"A老师"还是"B老师"？】、候选词重叠【xx市长/江yy？、xx市长/江yy？】）。
 具体可见[linking_strategy()](./examples/basics.py#linking_strategy)
 
+<a id="命名实体识别"> </a>
+### 命名实体识别
+找到一句句子中的人名，地名，机构名等命名实体。使用了 [pyhanLP](https://github.com/hankcs/pyhanlp) 的接口实现。
+
+```python
+ht0 = HarvestText()
+sent = "上海上港足球队的武磊是中国最好的前锋。"
+print(ht0.named_entity_recognition(sent))
+```
+
+```
+{'上海上港足球队': '机构名', '武磊': '人名', '中国': '地名'}
+```
+
+<a id="依存句法分析"> </a>
+### 依存句法分析
+分析语句中各个词语（包括链接到的实体）的主谓宾语修饰等语法关系，并以此提取可能的事件三元组。使用了 [pyhanLP](https://github.com/hankcs/pyhanlp) 的接口实现。
+
+```python
+ht0 = HarvestText()
+para = "上港的武磊武球王是中国最好的前锋。"
+entity_mention_dict = {'武磊': ['武磊', '武球王'], "上海上港":["上港"]}
+entity_type_dict = {'武磊': '球员', "上海上港":"球队"}
+ht0.add_entities(entity_mention_dict, entity_type_dict)
+for arc in ht0.dependency_parse(para):
+    print(arc)
+print(ht0.triple_extraction(para))
+```
+
+```
+[0, '上港', '球队', '定中关系', 3]
+[1, '的', 'u', '右附加关系', 0]
+[2, '武磊', '球员', '定中关系', 3]
+[3, '武球王', '球员', '主谓关系', 4]
+[4, '是', 'v', '核心关系', -1]
+[5, '中国', 'ns', '定中关系', 8]
+[6, '最好', 'd', '定中关系', 8]
+[7, '的', 'u', '右附加关系', 6]
+[8, '前锋', 'n', '动宾关系', 4]
+[9, '。', 'w', '标点符号', 4]
+```
+```python
+print(ht0.triple_extraction(para))
+```
+```
+[['上港武磊武球王', '是', '中国最好前锋']]
+```
+
+<a id="字符拼音纠错"> </a>
+
+### 字符拼音纠错
+把语句中有可能是已知实体的错误拼写（误差一个字符或拼音）的词语链接到对应实体。
+```python
+def entity_error_check():
+    ht0 = HarvestText()
+    typed_words = {"人名":["武磊"]}
+    ht0.add_typed_words(typed_words)
+    sent1 = "武磊和吴力只差一个拼音"
+    print(sent1)
+    print(ht0.entity_linking(sent1, pinyin_recheck=True))
+    sent2 = "武磊和吴磊只差一个字"
+    print(sent2)
+    print(ht0.entity_linking(sent2, char_recheck=True))
+    sent3 = "吴磊和吴力都可能是武磊的代称"
+    print(sent3)
+    print(ht0.get_linking_mention_candidates(sent3, pinyin_recheck=True, char_recheck=True))
+entity_error_check()
+```
+
+```
+武磊和吴力只差一个拼音
+[([0, 2], ('武磊', '#人名#')), [(3, 5), ('武磊', '#人名#')]]
+武磊和吴磊只差一个字
+[([0, 2], ('武磊', '#人名#')), [(3, 5), ('武磊', '#人名#')]]
+吴磊和吴力都可能是武磊的代称
+('吴磊和吴力都可能是武磊的代称', defaultdict(<class 'list'>, {(0, 2): {'武磊'}, (3, 5): {'武磊'}}))
+```
 <a id="情感分析"> </a>
+
 ### 情感分析
 本库采用情感词典方法进行情感分析，通过提供少量标准的褒贬义词语（“种子词”），从语料中自动学习其他词语的情感倾向，形成情感词典。对句中情感词的加总平均则用于判断句子的情感倾向：
+
 ```python3
 print("\nsentiment dictionary")
 sents = ["武磊威武，中超第一射手！",
@@ -149,6 +234,7 @@ print("%f:%s" % (ht.analyse_sent(sent),sent))
 如果没想好选择哪些词语作为“种子词”，本库中也内置了一个通用情感词典[内置资源](#内置资源)，可以从中挑选。
 
 <a id="信息检索"> </a>
+
 ### 信息检索
 可以从文档列表中查找出包含对应实体（及其别称）的文档，以及统计包含某实体的文档数。使用倒排索引的数据结构完成快速检索。
 ```python3
@@ -340,6 +426,7 @@ print(ht0.posseg(text0))
 <a id="存取与消除"> </a>
 ### 存取消除
 可以本地保存模型再读取复用(pickle)，也可以消除当前模型的记录。
+
 ```python3
 from harvesttext import loadHT,saveHT
 para = "上港的武磊和恒大的郜林，谁是中国最好的前锋？那当然是武磊武球王了，他是射手榜第一，原来是弱点的单刀也有了进步"
@@ -351,12 +438,19 @@ ht2.clear()
 print("cut with cleared model")
 print(ht2.seg(para))
 ```
+
 ## More
 本库正在开发中，关于现有功能的改善和更多功能的添加可能会陆续到来。欢迎在issues里提供意见建议。觉得好用的话，也不妨来个Star~
 
 感谢以下repo带来的启发：
+
 [snownlp](https://github.com/isnowfy/snownlp)
+
+[pyhanLP](https://github.com/hankcs/pyhanlp)
 
 [funNLP](https://github.com/fighting41love/funNLP)
 
 [ChineseWordSegmentation](https://github.com/Moonshile/ChineseWordSegmentation)
+
+[EventTriplesExtraction](https://github.com/liuhuanyong/EventTriplesExtraction)
+

@@ -12,21 +12,21 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import os
-import sys
-sys.path.insert(0, os.path.abspath('../harvesttext'))
+# import os
+# import sys
+# sys.path.insert(0, os.path.abspath('.'))
 
 
 # -- Project information -----------------------------------------------------
 
-project = u'harvesttext'
-copyright = u'2018, blmoistawinde'
-author = u'blmoistawinde'
+project = 'harvesttext'
+copyright = '2019, blmoistawinde'
+author = 'blmoistawinde'
 
 # The short X.Y version
-version = u'0.4'
+version = ''
 # The full version, including alpha/beta/rc tags
-release = u'0.4'
+release = 'V0.5'
 
 
 # -- General configuration ---------------------------------------------------
@@ -40,13 +40,10 @@ release = u'0.4'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.doctest',
-    'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
-    'sphinx.ext.napoleon',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -66,7 +63,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = u'zh_CN'
+language = 'zh_CN'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -109,7 +106,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'harveesttextdoc'
+htmlhelp_basename = 'harvesttextdoc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -136,8 +133,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'harveesttext.tex', u'harveesttext Documentation',
-     u'blmoistawinde', 'manual'),
+    (master_doc, 'harvesttext.tex', 'harvesttext Documentation',
+     'blmoistawinde', 'manual'),
 ]
 
 
@@ -146,7 +143,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'harveesttext', u'harveesttext Documentation',
+    (master_doc, 'harvesttext', 'harvesttext Documentation',
      [author], 1)
 ]
 
@@ -157,18 +154,13 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'harveesttext', u'harveesttext Documentation',
-     author, 'harveesttext', 'One line description of project.',
+    (master_doc, 'harvesttext', 'harvesttext Documentation',
+     author, 'harvesttext', 'One line description of project.',
      'Miscellaneous'),
 ]
 
 
 # -- Extension configuration -------------------------------------------------
-
-# -- Options for intersphinx extension ---------------------------------------
-
-# Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
 
 # -- Options for todo extension ----------------------------------------------
 
