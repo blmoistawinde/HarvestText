@@ -7,7 +7,7 @@ setup(
     name='harvesttext',
     author="blmoistawinde",
     author_email="1840962220@qq.com",
-    version = "0.5",
+    version = "0.5.1",
     license='MIT',
     keywords='NLP, tokenizing, entity linking, sentiment analysis',
     url='https://github.com/blmoistawinde/HarvestText',
@@ -30,6 +30,8 @@ setup(
         "networkx",
         "pypinyin",
         "pyhanlp",
+        "rdflib",
+        "pyxdameraulevenshtein"
     ],
     include_package_data = True,
     package_data ={"harvesttext":["resources/*"],}

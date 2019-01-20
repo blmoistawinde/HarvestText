@@ -247,8 +247,8 @@ def named_entity_recognition():
     sent = "上海上港足球队的武磊是中国最好的前锋。"
     print(ht0.named_entity_recognition(sent))
 
+
 if __name__ == "__main__":
-    depend_parse()
     new_word_discover()
     new_word_register()
     entity_segmentation()
@@ -264,4 +264,5 @@ if __name__ == "__main__":
     using_typed_words()
     build_word_ego_graph()
     entity_error_check()
+    depend_parse()
     named_entity_recognition()

@@ -43,6 +43,7 @@ class HarvestText:
         if not type0 in self.entity_types:
             self.entity_types.add(type0)
             self.prepared = False
+            self.hanlp_prepared = False
         self.mentions.add(new_word)
         self.pinyin_mention_dict[tuple(lazy_pinyin(new_word))].add(new_word)
 
@@ -85,9 +86,16 @@ class HarvestText:
                         trie_node["leaf"].remove((entity0, type0))
                         break
 
-    def add_entities(self, entity_mention_dict, entity_type_dict=None):
-        self.entity_mention_dict = dict(
-            (entity0, set(mentions0)) for (entity0, mentions0) in entity_mention_dict.items())
+    def add_entities(self, entity_mention_dict=None, entity_type_dict=None):
+        if entity_mention_dict is None and entity_type_dict is None:
+            return
+        if entity_mention_dict is None:         # 用实体名直接作为默认指称
+            entity_mention_dict = dict(
+                (entity0, {entity0}) for entity0 in entity_type_dict)
+        else:
+            entity_mention_dict = dict(
+                (entity0, set(mentions0)) for (entity0, mentions0) in entity_mention_dict.items())
+        self.entity_mention_dict = entity_mention_dict
         if entity_type_dict:
             self.entity_type_dict = entity_type_dict
         else:
@@ -128,7 +136,16 @@ class HarvestText:
     def prepare(self):
         self.prepared = True
         for type0 in self.entity_types:
-            jieba.add_word(type0, freq=10000, tag=type0[1:-1])
+            tag0 = "n"
+            if "人名" in type0:
+                tag0 = "nr"
+            elif "地名" in type0:
+                tag0 = "ns"
+            elif "机构" in type0:
+                tag0 = "nt"
+            elif "其他专名" in type0:
+                tag0 = "nz"
+            jieba.add_word(type0, freq=10000, tag=tag0)
     def hanlp_prepare(self):
         from pyhanlp import HanLP, JClass
         CustomDictionary = JClass("com.hankcs.hanlp.dictionary.CustomDictionary")
@@ -136,11 +153,21 @@ class HarvestText:
 
         self.hanlp_prepared = True
         for type0 in self.entity_types:
-            CustomDictionary.insert(type0, "%s 1000" % (type0[1:-1]))  # 动态增加
+            tag0 = "n"
+            if "人名" in type0:
+                tag0 = "nr"
+            elif "地名" in type0:
+                tag0 = "ns"
+            elif "机构" in type0:
+                tag0 = "nt"
+            elif "其他专名" in type0:
+                tag0 = "nz"
+            CustomDictionary.insert(type0, "%s 1000" % (tag0))  # 动态增加
         StandardTokenizer.ANALYZER.enableCustomDictionaryForcing(True)
 
     def deprepare(self):
         self.prepared = False
+        self.hanlp_prepared = False
         for type0 in self.entity_types:
             del jieba.dt.FREQ[type0]
             tag0 = type0[1:-1]
@@ -399,6 +426,7 @@ class HarvestText:
                 else:
                     l, r = entities_info[i][0]  # 或使用原文
                     word = sent[l:r]
+                flag = entities_info[i][1][1][1:-1]
                 i += 1
             result.append((word, flag))
         return result
@@ -453,15 +481,20 @@ class HarvestText:
         StandardTokenizer = JClass("com.hankcs.hanlp.tokenizer.StandardTokenizer")
         StandardTokenizer.SEGMENT.enableAllNamedEntityRecognize(True)
         entity_type_dict = {}
-        for x in StandardTokenizer.segment(sent2):
-            # 三种前缀代表：人名（nr），地名（ns），机构名（nt）
-            tag0 = str(x.nature)
-            if tag0.startswith("nr"):
-                entity_type_dict[x.word] = "人名"
-            elif tag0.startswith("ns"):
-                entity_type_dict[x.word] = "地名"
-            elif tag0.startswith("nt"):
-                entity_type_dict[x.word] = "机构名"
+        try:
+            for x in StandardTokenizer.segment(sent2):
+                # 三种前缀代表：人名（nr），地名（ns），机构名（nt）
+                tag0 = str(x.nature)
+                if tag0.startswith("nr"):
+                    entity_type_dict[x.word] = "人名"
+                elif tag0.startswith("ns"):
+                    entity_type_dict[x.word] = "地名"
+                elif tag0.startswith("nt"):
+                    entity_type_dict[x.word] = "机构名"
+                elif tag0.startswith("nz"):
+                    entity_type_dict[x.word] = "其他专名"
+        except:
+            pass
         return entity_type_dict
     def dependency_parse(self, sent, standard_name=False, stopwords=None):
         """
@@ -495,10 +528,10 @@ class HarvestText:
                     word0 = sent[l:r]
                 tag0 = entities_info[i][1][1][1:-1]
                 i += 1
-            arcs.append([word.ID-1, word0, tag0, word.DEPREL ,word.HEAD.ID-1])
+            arcs.append([word.ID-1, word0, tag0, word.DEPREL, word.HEAD.ID-1])
         return arcs
 
-    def triple_extraction(self, sent, standard_name=False, stopwords=None):
+    def triple_extraction(self, sent, standard_name=False, stopwords=None, expand = "all"):
         """
         利用主谓宾等依存句法关系，找到句子中有意义的三元组。
         很多代码参考：https://github.com/liuhuanyong/EventTriplesExtraction
@@ -506,25 +539,32 @@ class HarvestText:
         :param sent:
         :param standard_name:
         :param stopwords:
+        :param expand: 默认"all"：扩展所有主谓词，"exclude_entity"：不扩展已知实体，可以保留标准的实体名，用于链接。"None":不扩展
         :return:
         """
         arcs = self.dependency_parse(sent, standard_name, stopwords)
 
         '''对找出的主语或者宾语进行扩展'''
         def complete_e(words, postags, child_dict_list, word_index):
-            child_dict = child_dict_list[word_index]
-            prefix = ''
-            if '定中关系' in child_dict:
-                for i in range(len(child_dict['定中关系'])):
-                    prefix += complete_e(words, postags, child_dict_list, child_dict['定中关系'][i])
-            postfix = ''
-            if postags[word_index] == 'v':
-                if '动宾关系' in child_dict:
-                    postfix += complete_e(words, postags, child_dict_list, child_dict['动宾关系'][0])
-                if '主谓关系' in child_dict:
-                    prefix = complete_e(words, postags, child_dict_list, child_dict['主谓关系'][0]) + prefix
+            if expand == "all" or (expand == "exclude_entity" and "#"+postags[word_index]+"#" not in self.entity_types):
+                child_dict = child_dict_list[word_index]
+                prefix = ''
+                if '定中关系' in child_dict:
+                    for i in range(len(child_dict['定中关系'])):
+                        prefix += complete_e(words, postags, child_dict_list, child_dict['定中关系'][i])
+                postfix = ''
+                if postags[word_index] == 'v':
+                    if '动宾关系' in child_dict:
+                        postfix += complete_e(words, postags, child_dict_list, child_dict['动宾关系'][0])
+                    if '主谓关系' in child_dict:
+                        prefix = complete_e(words, postags, child_dict_list, child_dict['主谓关系'][0]) + prefix
 
-            return prefix + words[word_index] + postfix
+                return prefix + words[word_index] + postfix
+            elif expand == "None":
+                return words[word_index]
+            else:            # (expand == "exclude_entity" and "#"+postags[word_index]+"#" in self.entity_types)
+                return words[word_index]
+
 
         words, postags = ["" for i in range(len(arcs))], ["" for i in range(len(arcs))]
         child_dict_list = [defaultdict(list) for i in range(len(arcs))]
@@ -545,11 +585,11 @@ class HarvestText:
                     svos.append([e1, r, e2])
 
                 # 定语后置，动宾关系
-                relation = arcs[index][2]
-                head = arcs[index][0]
+                relation = arcs[index][-2]
+                head = arcs[index][-1]
                 if relation == '定中关系':
                     if '动宾关系' in child_dict:
-                        e1 = complete_e(words, postags, child_dict_list, head - 1)
+                        e1 = complete_e(words, postags, child_dict_list, head)
                         r = words[index]
                         e2 = complete_e(words, postags, child_dict_list, child_dict['动宾关系'][0])
                         temp_string = r + e2
