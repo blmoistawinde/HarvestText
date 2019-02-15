@@ -1,3 +1,0 @@
-jieba
-numpy
-pandas

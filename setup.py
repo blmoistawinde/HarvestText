@@ -31,7 +31,7 @@ setup(
         "pypinyin",
         "pyhanlp",
         "rdflib",
-        "pyxdameraulevenshtein"
+        "pyxDamerauLevenshtein==1.5"
     ],
     include_package_data = True,
     package_data ={"harvesttext":["resources/*"],}
