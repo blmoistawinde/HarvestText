@@ -41,6 +41,9 @@ class HarvestText:
     def build_trie(self, new_word, entity, entity_type):
         type0 = "#%s#" % entity_type
         if not type0 in self.entity_types:
+            punct_pattern = re.compile(r"[^a-zA-Z0-9\u4e00-\u9fa5]")
+            if punct_pattern.match(type0):
+                raise Exception("You type input includes punctuations, please remove them first")
             self.entity_types.add(type0)
             self.prepared = False
             self.hanlp_prepared = False
@@ -145,7 +148,7 @@ class HarvestText:
                 tag0 = "nt"
             elif "其他专名" in type0:
                 tag0 = "nz"
-            jieba.add_word(type0, freq=10000, tag=tag0)
+            jieba.add_word(type0, freq = 10000, tag=tag0)
     def hanlp_prepare(self):
         from pyhanlp import HanLP, JClass
         CustomDictionary = JClass("com.hankcs.hanlp.dictionary.CustomDictionary")
@@ -289,11 +292,12 @@ class HarvestText:
         :param mention:  指称
         :return: 如果存在对应实体，则返回（实体,类型），否则返回None, None
         '''
-        r, entity_types = self.dig_trie(mention, 0)
-        if r != -1:
-            surface0 = mention[0:r]  # 字面值
-            (entity0, type0) = self.choose_from(surface0, entity_types)
-            return entity0, type0
+        for l in range(len(mention)-1):
+            r, entity_types = self.dig_trie(mention, l)
+            if r != -1 and r<=len(mention):
+                surface0 = mention[0:r]  # 字面值
+                (entity0, type0) = self.choose_from(surface0, entity_types)
+                return entity0, type0
         return None, None
 
     def get_pinyin_correct_candidates(self, word):  # 默认最多容忍一个拼音的变化
@@ -310,7 +314,6 @@ class HarvestText:
         return list(mention_cands)
 
     def choose_from_multi_mentions(self,mention_cands,sent=""):
-        ## TODO: 结合上下文，统计信息，更复杂的链接策略+筛选策略（不是每个候选指称都是应该被链接的）
         surface0 = mention_cands[0]
         entity0, type0 = self.mention2entity(surface0)
         self._link_record(surface0, entity0)
@@ -340,7 +343,7 @@ class HarvestText:
         l = 0
         while l < len(sent):
             r, entity_types = self.dig_trie(sent, l)
-            if r != -1:
+            if r != -1 and r <= len(sent):
                 surface0 = sent[l:r]  # 字面值
                 entity_type0 = self.choose_from(surface0, entity_types)
                 if "freq" in self.linking_strategy:  # 处理重叠消歧，目前只有freq策略能够做到
@@ -348,7 +351,7 @@ class HarvestText:
                     overlap_surface_entity_with_pos[surface0] = ([l, r], entity_type0)
                     for ll in range(l + 1, r):
                         rr, entity_types_2 = self.dig_trie(sent, ll)
-                        if rr != -1:
+                        if rr != -1 and rr <= len(sent):
                             surface0_2 = sent[ll:rr]  # 字面值
                             entity_type0_2 = self.choose_from(surface0_2, entity_types_2)
                             overlap_surface_entity_with_pos[surface0_2] = ([ll, rr], entity_type0_2)
@@ -418,8 +421,6 @@ class HarvestText:
         result = []
         i = 0
         for word, flag in pseg.cut(sent2):
-            if stopwords and word in stopwords:
-                continue
             if word in self.entity_types:
                 if self.standard_name:
                     word = entities_info[i][1][0]  # 使用链接的实体
@@ -428,6 +429,9 @@ class HarvestText:
                     word = sent[l:r]
                 flag = entities_info[i][1][1][1:-1]
                 i += 1
+            else:
+                if stopwords and word in stopwords:
+                    continue
             result.append((word, flag))
         return result
     def seg(self, sent, standard_name=False, stopwords=None, return_sent=False):
@@ -437,8 +441,6 @@ class HarvestText:
         result = []
         i = 0
         for word in jieba.cut(sent2):
-            if stopwords and word in stopwords:
-                continue
             if word in self.entity_types:
                 if self.standard_name:
                     word = entities_info[i][1][0]  # 使用链接的实体
@@ -446,6 +448,9 @@ class HarvestText:
                     l, r = entities_info[i][0]  # 或使用原文
                     word = sent[l:r]
                 i += 1
+            else:
+                if stopwords and word in stopwords:
+                    continue
             result.append(word)
         if return_sent:
             return " ".join(result)
