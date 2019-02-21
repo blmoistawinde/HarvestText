@@ -11,6 +11,7 @@ from collections import defaultdict
 from .word_discoverer import WordDiscoverer
 from .sent_dict import SentDict
 import logging
+import warnings
 from pypinyin import lazy_pinyin, pinyin
 
 
@@ -60,6 +61,9 @@ class HarvestText:
         if not 'leaf' in trie_node:
             trie_node['leaf'] = {(entity, type0)}
         else:
+            for (entity_orig, type_orig) in trie_node['leaf'].copy():
+                if entity_orig == entity:           # 不允许同一实体有不同类型
+                    trie_node['leaf'].remove((entity_orig, type_orig))
             trie_node['leaf'].add((entity, type0))
 
     def remove_mention(self, mention):
@@ -94,21 +98,38 @@ class HarvestText:
     def add_entities(self, entity_mention_dict=None, entity_type_dict=None):
         if entity_mention_dict is None and entity_type_dict is None:
             return
+
         if entity_mention_dict is None:         # 用实体名直接作为默认指称
             entity_mention_dict = dict(
                 (entity0, {entity0}) for entity0 in entity_type_dict)
         else:
             entity_mention_dict = dict(
                 (entity0, set(mentions0)) for (entity0, mentions0) in entity_mention_dict.items())
-        self.entity_mention_dict = entity_mention_dict
-        if entity_type_dict:
+        if len(self.entity_mention_dict) == 0:
+            self.entity_mention_dict = entity_mention_dict
+        else:
+            for entity, mentions in entity_type_dict.items():
+                if entity in self.entity_mention_dict:
+                    self.entity_mention_dict[entity] |= entity_mention_dict[entity]
+                else:
+                    self.entity_mention_dict[entity] = entity_mention_dict[entity]
+
+
+        if entity_type_dict is None:
+            entity_type_dict = {entity: "添加词" for entity in entity_mention_dict}
+        if len(entity_type_dict) == 0:
             self.entity_type_dict = entity_type_dict
         else:
-            self.entity_type_dict = {entity: "添加词" for entity in entity_mention_dict}
+            for entity, type0 in entity_type_dict.items():
+                if entity in self.entity_type_dict and type0 != self.entity_type_dict[entity]:
+                    # 不允许同一实体有不同类型
+                    warnings.warn("You've added an entity twice with different types, the later type will be used.")
+                self.entity_type_dict[entity] = type0
+
         type_entity_mention_dict = defaultdict(dict)
         for entity0, type0 in self.entity_type_dict.items():
-            if entity0 in entity_mention_dict:
-                type_entity_mention_dict[type0][entity0] = entity_mention_dict[entity0]
+            if entity0 in self.entity_mention_dict:
+                type_entity_mention_dict[type0][entity0] = self.entity_mention_dict[entity0]
         self.type_entity_mention_dict = type_entity_mention_dict
         self._add_entities(type_entity_mention_dict)
 
@@ -186,18 +207,21 @@ class HarvestText:
 
     def dig_trie(self, sent, l):  # 返回实体右边界r,实体范围
         trie_node = self.trie_root
+        # 需要记录：如果已经找到结果后还继续向前，但是在前面反而没有结果时，回溯寻找之前的记录
+        # 例如：有mention("料酒"，"料酒 （焯水用）"), 在字符"料酒 花椒"中匹配时，已经经过"料酒"，但却会因为空格继续向前，最后错过结果
+        records = []
         for i in range(l, len(sent)):
             if sent[i] in trie_node:
                 trie_node = trie_node[sent[i]]
             else:
-                if "leaf" in trie_node:
-                    return i, trie_node["leaf"]
-                else:
-                    return -1, set()  # -1表示未找到
-        if "leaf" in trie_node:
-            return len(sent), trie_node["leaf"]
+                break
+            if "leaf" in trie_node:
+                records.append((i + 1, trie_node["leaf"]))
+        if len(records) > 0:
+            return records[-1]
         else:
             return -1, set()  # -1表示未找到
+
     def search_word_trie(self, word, tolerance=1):
         """
 
@@ -256,7 +280,8 @@ class HarvestText:
                         self.entity_count[entity0] += freq0
     def _link_record(self, surface0, entity0):
         if "latest" in self.linking_strategy:
-            self.latest_mention[surface0] = entity0
+            for surface0 in self.entity_mention_dict[entity0]:
+                self.latest_mention[surface0] = entity0
         if "freq" in self.linking_strategy:
             self.entity_count[entity0] += 1
 
