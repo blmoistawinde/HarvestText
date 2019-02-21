@@ -1,6 +1,6 @@
 *.pyc
 /__pycache__
-
+/.pytest_cache
 /my_tests
 /.idea
 /build

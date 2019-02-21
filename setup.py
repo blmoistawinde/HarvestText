@@ -33,6 +33,7 @@ setup(
         "rdflib",
         "pyxDamerauLevenshtein==1.5"
     ],
+    tests_require=['pytest'],
     include_package_data = True,
     package_data ={"harvesttext":["resources/*"],}
 )
