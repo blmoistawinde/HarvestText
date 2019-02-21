@@ -41,9 +41,11 @@ class HarvestText:
     def build_trie(self, new_word, entity, entity_type):
         type0 = "#%s#" % entity_type
         if not type0 in self.entity_types:
-            punct_pattern = re.compile(r"[^a-zA-Z0-9\u4e00-\u9fa5]")
-            if punct_pattern.match(type0):
-                raise Exception("You type input includes punctuations, please remove them first")
+            punct_regex = r"[、！？｡＂＃＄％＆＇（）＊＋，－／：；＜＝＞＠［＼］＾＿｀｛｜｝～｟｠｢｣､、〃》「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟〰〾〿–—‘’‛“”„‟…‧﹏!\"\#$%&\'\(\)\*\+,-\./:;<=>?@\[\\\]\^_`{\|}~]"
+            matched = re.search(punct_regex, entity_type, re.MULTILINE | re.UNICODE)
+            if matched:
+                punct0 = matched.group()
+                raise Exception("Your type input '{}' includes punctuation '{}', please remove them first".format(entity_type,punct0))
             self.entity_types.add(type0)
             self.prepared = False
             self.hanlp_prepared = False
