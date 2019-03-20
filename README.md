@@ -7,7 +7,17 @@ Sow with little data seed, harvest much from a text field.
 ![PyPI - Python Version](https://img.shields.io/badge/python-3.6-blue.svg) ![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg) ![Version](https://img.shields.io/badge/version-V0.5-red.svg)
 
 ## 用途
-HarvestText是一个专注无（弱）监督方法，能够整合领域知识（如类型，别名）对特定领域文本进行简单高效地处理和分析的库。
+HarvestText是一个专注无（弱）监督方法，能够整合领域知识（如类型，别名）对特定领域文本进行简单高效地处理和分析的库。适用于许多文本预处理和初步探索性分析任务，在小说分析，网络文本，专业文献等领域都有潜在应用价值。
+
+使用案例:
+- [分析《三国演义》中的社交网络](https://blog.csdn.net/blmoistawinde/article/details/85344906)（实体分词，文本摘要，关系网络等）
+![网络建模过程示意.png](https://img-blog.csdnimg.cn/20181229200533159.png?x-oss-)
+- [2018中超舆情展示系统](https://blmoistawinde.github.io/SuperLegal2018Display/index.html)（实体分词，情感分析，新词发现\[辅助绰号识别\]等）
+相关文章：[一文看评论里的中超风云](https://blog.csdn.net/blmoistawinde/article/details/83443196)
+![2018中超舆情展示系统](https://img-blog.csdnimg.cn/20181027084021173.png)
+
+【注：本库仅完成实体分词和情感分析，可视化使用matplotlib】
+- [近代史纲要信息抽取及问答系统](https://blog.csdn.net/blmoistawinde/article/details/86557070)(命名实体识别，依存句法分析，简易问答系统)
 
 具体功能如下：
 
@@ -42,12 +52,6 @@ HarvestText是一个专注无（弱）监督方法，能够整合领域知识（
 		- 利用句法分析，提取可能表示事件的三元组。
 	- [简易问答系统](#简易问答系统)
 		- 从三元组中建立知识图谱并应用于问答，可以定制一些问题模板。效果有待提升，仅作为示例。
-
-	
-使用案例:
-- [《三国演义》中的社交网络](https://blog.csdn.net/blmoistawinde/article/details/85344906)（实体分词，文本摘要，关系网络等）
-- [2018中超舆情展示系统](https://blmoistawinde.github.io/SuperLegal2018Display/index.html)（实体分词，情感分析，新词发现\[辅助绰号识别\]等）
-- [近代史纲要信息抽取及问答系统](https://blog.csdn.net/blmoistawinde/article/details/86557070)(命名实体识别，依存句法分析，简易问答系统)
 
 	
 ## 用法
