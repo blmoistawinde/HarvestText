@@ -233,7 +233,52 @@ print("%f:%s" % (ht.analyse_sent(sent),sent))
 ```
 > 0.600000:武球王威武，中超最强球员！
 
-如果没想好选择哪些词语作为“种子词”，本库中也内置了一个通用情感词典[内置资源](#内置资源)，可以从中挑选。
+如果没想好选择哪些词语作为“种子词”，本库中也内置了一个通用情感词典[内置资源](#内置资源)，在不指定情感词时作为默认的选择，也可以根据需要从中挑选。
+
+默认使用的SO-PMI算法对于情感值没有上下界约束，如果需要限制在[0,1]或者[-1,1]这样的区间的话，可以调整scale参数，例子如下：
+
+```python3
+print("\nsentiment dictionary using default seed words")
+docs = ["张市筹设兴华实业公司外区资本家踊跃投资晋察冀边区兴华实业公司，自筹备成立以来，解放区内外企业界人士及一般商民，均踊跃认股投资",
+        "打倒万恶的资本家",
+    "该公司原定资本总额为二十五万万元，现已由各界分认达二十万万元，所属各厂、各公司亦募得股金一万万余元",
+    "连日来解放区以外各工商人士，投函向该公司询问经营性质与范围以及股东权限等问题者甚多，络绎抵此的许多资本家，于参观该公司所属各厂经营状况后，对民主政府扶助与奖励私营企业发展的政策，均极表赞同，有些资本家因款项未能即刻汇来，多向筹备处预认投资的额数。由平津来张的林明棋先生，一次即以现款入股六十余万元"
+   ]
+# scale: 将所有词语的情感值范围调整到[-1,1]
+# 省略pos_seeds, neg_seeds,将采用默认的情感词典 get_qh_sent_dict()
+print("scale=\"0-1\", 按照最大为1，最小为0进行线性伸缩，0.5未必是中性")
+sent_dict = ht.build_sent_dict(docs,min_times=1,scale="0-1")
+print("%s:%f" % ("赞同",sent_dict["赞同"]))
+print("%s:%f" % ("二十万",sent_dict["二十万"]))
+print("%s:%f" % ("万恶",sent_dict["万恶"]))
+print("%f:%s" % (ht.analyse_sent(docs[0]), docs[0]))
+print("%f:%s" % (ht.analyse_sent(docs[1]), docs[1]))
+
+print("scale=\"+-1\", 在正负区间内分别伸缩，保留0作为中性的语义")
+sent_dict = ht.build_sent_dict(docs,min_times=1,scale="+-1")
+print("%s:%f" % ("赞同",sent_dict["赞同"]))
+print("%s:%f" % ("二十万",sent_dict["二十万"]))
+print("%s:%f" % ("万恶",sent_dict["万恶"]))
+print("%f:%s" % (ht.analyse_sent(docs[0]), docs[0]))
+print("%f:%s" % (ht.analyse_sent(docs[1]), docs[1]))
+```
+
+```
+sentiment dictionary using default seed words
+scale="0-1", 按照最大为1，最小为0进行线性伸缩，0.5未必是中性
+赞同:1.000000
+二十万:0.153846
+万恶:0.000000
+0.449412:张市筹设兴华实业公司外区资本家踊跃投资晋察冀边区兴华实业公司，自筹备成立以来，解放区内外企业界人士及一般商民，均踊跃认股投资
+0.364910:打倒万恶的资本家
+scale="+-1", 在正负区间内分别伸缩，保留0作为中性的语义
+赞同:1.000000
+二十万:0.000000
+万恶:-1.000000
+0.349305:张市筹设兴华实业公司外区资本家踊跃投资晋察冀边区兴华实业公司，自筹备成立以来，解放区内外企业界人士及一般商民，均踊跃认股投资
+-0.159652:打倒万恶的资本家
+```
+
 
 <a id="信息检索"> </a>
 
@@ -278,7 +323,7 @@ G = ht.build_entity_graph(docs, used_types=["球员"])
 print(dict(G.edges.items()))
 ```
 
-获得以一个词语为中心的词语网络，下面以三国第一章为例，探索主人公刘备的遭遇（下为主要代码，例子见[build_word_ego_graph()](./examples/basics.py#linking_strategy)）。
+获得以一个词语为中心的词语网络，下面以三国第一章为例，探索主人公刘备的遭遇（下为主要代码，例子见[build_word_ego_graph()](./examples/basics.py#)）。
 ```python3
 entity_mention_dict, entity_type_dict = get_sanguo_entity_dict()
 ht0.add_entities(entity_mention_dict, entity_type_dict)

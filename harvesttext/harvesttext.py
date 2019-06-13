@@ -10,6 +10,7 @@ import jieba.posseg as pseg
 from collections import defaultdict
 from .word_discoverer import WordDiscoverer
 from .sent_dict import SentDict
+from .resources import get_qh_sent_dict
 import logging
 import warnings
 from pypinyin import lazy_pinyin, pinyin
@@ -766,10 +767,24 @@ class HarvestText:
     #
     # 情感分析模块
     #
-    def build_sent_dict(self, sents, method="PMI", min_times=5, ft_size=100, ft_epochs=15, ft_window=5, pos_seeds=[],
-                        neg_seeds=[]):
+    def build_sent_dict(self, sents, method="PMI", min_times=5, scale="None", pos_seeds=None, neg_seeds=None):
+        '''
+        利用种子词，构建情感词典
+        :param sents: list of string, 文本列表
+        :param method: "PMI", 使用的算法，目前仅支持PMI
+        :param min_times: int, 默认为5， 在所有句子中出现次数少于这个次数的词语将被过滤
+        :param scale: {"None","0-1","+-1"}, 默认为"None"，否则将对情感值进行变换
+        若为"0-1"，按照最大为1，最小为0进行线性伸缩，0.5未必是中性
+        若为"+-1", 在正负区间内分别伸缩，保留0作为中性的语义
+        :param pos_seeds: list of string, 积极种子词，如不填写将默认采用清华情感词典
+        :param neg_seeds: list of string, 消极种子词，如不填写将默认采用清华情感词典
+        :return: sent_dict: 构建好的情感词典，可以像dict一样查询单个词语的情感值
+        '''
+        if pos_seeds is None or neg_seeds is None:
+            sdict = get_qh_sent_dict()
+            pos_seeds, neg_seeds = sdict["pos"], sdict["neg"]
         docs = [self.seg(sent) for sent in sents]
-        self.sent_dict = SentDict(docs, method, min_times, ft_size, ft_epochs, ft_window, pos_seeds, neg_seeds)
+        self.sent_dict = SentDict(docs, method, min_times, scale, pos_seeds, neg_seeds)
         return self.sent_dict
 
     def analyse_sent(self, sent):

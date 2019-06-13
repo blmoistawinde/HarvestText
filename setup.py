@@ -7,7 +7,7 @@ setup(
     name='harvesttext',
     author="blmoistawinde",
     author_email="1840962220@qq.com",
-    version = "0.5.4",
+    version = "0.5.4.1",
     license='MIT',
     keywords='NLP, tokenizing, entity linking, sentiment analysis',
     url='https://github.com/blmoistawinde/HarvestText',
