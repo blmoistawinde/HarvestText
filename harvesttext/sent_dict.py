@@ -50,6 +50,7 @@ class SentDict(object):
         co_occur = dict()               # 由于defaultdict太占内存，还是使用dict
         one_occur = dict()
         for doc in docs:
+            doc = set(doc)
             for word in doc:
                 if not word in one_occur:
                     one_occur[word] = 1
