@@ -767,7 +767,8 @@ class HarvestText:
     #
     # 情感分析模块
     #
-    def build_sent_dict(self, sents, method="PMI", min_times=5, scale="None", pos_seeds=None, neg_seeds=None):
+    def build_sent_dict(self, sents, method="PMI", min_times=5, scale="None",
+                        pos_seeds=None, neg_seeds=None, stopwords=None):
         '''
         利用种子词，构建情感词典
         :param sents: list of string, 文本列表
@@ -778,12 +779,18 @@ class HarvestText:
         若为"+-1", 在正负区间内分别伸缩，保留0作为中性的语义
         :param pos_seeds: list of string, 积极种子词，如不填写将默认采用清华情感词典
         :param neg_seeds: list of string, 消极种子词，如不填写将默认采用清华情感词典
+        :param stopwords: list of string, stopwords词，如不填写将不使用
         :return: sent_dict: 构建好的情感词典，可以像dict一样查询单个词语的情感值
         '''
         if pos_seeds is None or neg_seeds is None:
             sdict = get_qh_sent_dict()
             pos_seeds, neg_seeds = sdict["pos"], sdict["neg"]
-        docs = [self.seg(sent) for sent in sents]
+        docs = [set(self.seg(sent)) for sent in sents]
+        if not stopwords is None:
+            stopwords = set(stopwords)
+            for i in range(len(docs)):
+                docs[i] = docs[i] - stopwords
+            docs = list(filter(lambda x: len(x) > 0, docs))
         self.sent_dict = SentDict(docs, method, min_times, scale, pos_seeds, neg_seeds)
         return self.sent_dict
 
