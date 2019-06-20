@@ -27,10 +27,10 @@ class SentDict(object):
             if method == "PMI":
                 self.co_occur, self.one_occur = self.get_word_stat(docs)
                 self.words = set(word for word in self.one_occur if self.one_occur[word]>=min_times)
-                if len(pos_seeds) > 0 and len(neg_seeds) > 0:     # 如果有新的输入，就更新种子词，否则默认已有（比如通过set已设定）
+                if len(pos_seeds) > 0 or len(neg_seeds) > 0:     # 如果有新的输入，就更新种子词，否则默认已有（比如通过set已设定）
                     self.pos_seeds = (pos_seeds & self.words)
                     self.neg_seeds = (neg_seeds & self.words)
-                if len(self.pos_seeds) > 0 and len(self.neg_seeds) > 0:
+                if len(self.pos_seeds) > 0 or len(self.neg_seeds) > 0:
                     self.sent_dict = self.SO_PMI(self.words, scale)
                 else:
                     raise Exception("你的文章中不包含种子词，SO-PMI算法无法执行")
@@ -50,7 +50,6 @@ class SentDict(object):
         co_occur = dict()               # 由于defaultdict太占内存，还是使用dict
         one_occur = dict()
         for doc in docs:
-            doc = set(doc)
             for word in doc:
                 if not word in one_occur:
                     one_occur[word] = 1
