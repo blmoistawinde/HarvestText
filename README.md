@@ -1,4 +1,4 @@
-# HarvestText
+﻿# HarvestText
 
 Sow with little data seed, harvest much from a text field.
 

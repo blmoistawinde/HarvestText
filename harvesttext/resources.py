@@ -37,7 +37,7 @@ def get_baidu_stopwords():
 
         """
     pwd = os.path.abspath(os.path.dirname(__file__))
-    with open(pwd + "/resources/百度停用词列表.json", "r", encoding="utf-8") as f:
+    with open(pwd + "/resources/bd_stopwords.json", "r", encoding="utf-8") as f:
         stopwords = json.load(f)
     return set(stopwords)
 

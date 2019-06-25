@@ -15,9 +15,9 @@ class SentDict(object):
     def __getitem__(self,key):
         return self.sent_dict[key]
     def set_pos_seeds(self, pos_seeds):
-        self.pos_seeds = [w for w in pos_seeds if w in self.words]
+        self.pos_seeds = set(pos_seeds) & set(self.words)
     def set_neg_seed(self, neg_seeds):
-        self.neg_seeds = [w for w in neg_seeds if w in self.words]
+        self.neg_seeds = set(neg_seeds) & set(self.words)
     def build_sent_dict(self ,docs=[], method="PMI",min_times=5, scale="None", pos_seeds=None,neg_seeds=None):
         self.doc_count = len(docs)
         self.method = method
