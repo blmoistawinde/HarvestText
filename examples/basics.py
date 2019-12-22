@@ -1,4 +1,5 @@
 #coding=utf-8
+import re
 from harvesttext import HarvestText
 ht = HarvestText()
 
@@ -273,6 +274,67 @@ def named_entity_recognition():
     sent = "上海上港足球队的武磊是中国最好的前锋。"
     print(ht0.named_entity_recognition(sent))
 
+def el_keep_all():
+    ht0 = HarvestText()
+    entity_mention_dict = {'李娜1': ['李娜'], "李娜2":['李娜']}
+    entity_type_dict = {'李娜1': '运动员', '李娜2': '歌手'}
+    ht0.add_entities(entity_mention_dict, entity_type_dict)
+    print(ht0.entity_linking("打球的李娜和唱歌的李娜不是一个人", keep_all=True))
+
+def filter_el_with_rule():
+    # 当候选实体集很大的时候，实体链接得到的指称重可能有很多噪声，可以利用一些规则进行筛选
+    # 1. 词性：全部由动词v，形容词a, 副词d, 连词c，介词p等组成的，一般不是传统意义上会关心的实体
+    # 2. 词长：指称长度只有1的，一般信息不足
+    # 由于这些规则可以高度定制化，所以不直接写入库中，而在外部定义。这段代码提供一个示例：
+    def el_filtering(entities_info, ch_pos):
+        return [([l, r], (entity0, type0)) for [l, r], (entity0, type0) in entities_info
+                if not all(bool(re.search("^(v|a|d|c|p|y|z)", pos)) for pos in ch_pos[l:r])
+                and (r-l) > 1]
+    ht0 = HarvestText()
+    text = "《记得》：谁还记得 是谁先说 永远的爱我"
+    entity_mention_dict = {'记得（歌曲）': ['记得', '《记得》'], "我（张国荣演唱歌曲）": ['我', '《我》']}
+    entity_type_dict = {'记得（歌曲）': '歌名', '我（张国荣演唱歌曲）': '歌名'}
+    ht0.add_entities(entity_mention_dict, entity_type_dict)
+    entities_info, ch_pos = ht0.entity_linking(text, with_ch_pos=True)  # 显式设定了with_ch_pos=True才有
+    print("filter_el_with_rule")
+    print("Sentence:", text)
+    print("Original Entities:", entities_info)
+    filtered_entities = el_filtering(entities_info, ch_pos)
+    # 我 因为词长被过滤，而 记得 因为是纯动词而被过滤，但是《记得》包括了标点，不会被过滤
+    print("filtered_entities:", filtered_entities)
+
+def clean_text():
+    print("各种清洗文本")
+    ht0 = HarvestText()
+    # 默认的设置可用于清洗微博文本
+    text1 = "回复@钱旭明QXM:[嘻嘻][嘻嘻] //@钱旭明QXM:杨大哥[good][good]"
+    print("清洗微博【@和表情符等】")
+    print("原：", text1)
+    print("清洗后：", ht0.clean_text(text1))
+    # URL的清理
+    text1 = "【#赵薇#：正筹备下一部电影 但不是青春片....http://t.cn/8FLopdQ"
+    print("清洗网址URL")
+    print("原：", text1)
+    print("清洗后：", ht0.clean_text(text1, remove_url=True))
+    # 清洗邮箱
+    text1 = "我的邮箱是abc@demo.com，欢迎联系"
+    print("清洗邮箱")
+    print("原：", text1)
+    print("清洗后：", ht0.clean_text(text1, email=True))
+    # 处理URL转义字符
+    text1 = "www.%E4%B8%AD%E6%96%87%20and%20space.com"
+    print("URL转正常字符")
+    print("原：", text1)
+    print("清洗后：", ht0.clean_text(text1, norm_url=True, remove_url=False))
+    text1 = "www.中文 and space.com"
+    print("正常字符转URL[含有中文和空格的request需要注意]")
+    print("原：", text1)
+    print("清洗后：", ht0.clean_text(text1, to_url=True, remove_url=False))
+    # 处理HTML转义字符
+    text1 = "&lt;a c&gt;&nbsp;&#x27;&#x27;"
+    print("HTML转正常字符")
+    print("原：", text1)
+    print("清洗后：", ht0.clean_text(text1, norm_html=True))
 
 if __name__ == "__main__":
     new_word_discover()
@@ -293,3 +355,6 @@ if __name__ == "__main__":
     entity_error_check()
     depend_parse()
     named_entity_recognition()
+    el_keep_all()
+    filter_el_with_rule()
+    clean_text()

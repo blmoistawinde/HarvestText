@@ -4,6 +4,8 @@ import re
 import json
 import numpy as np
 import pandas as pd
+import html
+import urllib
 from itertools import combinations
 import jieba
 import jieba.posseg as pseg
@@ -366,46 +368,67 @@ class HarvestText:
                     l = sent.find(word)
                     entities_info.append([(l,l+len(word)),(entity0, type0)])
 
-    def _entity_linking(self, sent, pinyin_recheck=False, char_recheck=False):
+    def _entity_linking(self, sent, pinyin_recheck=False, char_recheck=False, keep_all=False):
         entities_info = []
         l = 0
         while l < len(sent):
             r, entity_types = self.dig_trie(sent, l)
             if r != -1 and r <= len(sent):
                 surface0 = sent[l:r]  # 字面值
-                entity_type0 = self.choose_from(surface0, entity_types)
-                if "freq" in self.linking_strategy:  # 处理重叠消歧，目前只有freq策略能够做到
-                    overlap_surface_entity_with_pos = {}  # 获得每个待链接字面值的“唯一”映射
-                    overlap_surface_entity_with_pos[surface0] = ([l, r], entity_type0)
-                    for ll in range(l + 1, r):
-                        rr, entity_types_2 = self.dig_trie(sent, ll)
-                        if rr != -1 and rr <= len(sent):
-                            surface0_2 = sent[ll:rr]  # 字面值
-                            entity_type0_2 = self.choose_from(surface0_2, entity_types_2)
-                            overlap_surface_entity_with_pos[surface0_2] = ([ll, rr], entity_type0_2)
-                    # 再利用频率比较这些映射
-                    candidate, cnt_cand = None, 0
-                    for i, ([ll, rr], entity_type00) in enumerate(overlap_surface_entity_with_pos.values()):
-                        entity00, cnt0 = entity_type00[0], 0
-                        if entity00 in self.entity_count:
-                            cnt0 = self.entity_count[entity00]
-                        if i == 0 or cnt0 > cnt_cand:
-                            candidate, cnt_cand = ([ll, rr], entity_type00), cnt0
-                    entities_info.append(candidate)
-                    l = candidate[0][1]
+                if not keep_all:
+                    entity_type0 = self.choose_from(surface0, entity_types)
+                    if "freq" in self.linking_strategy:  # 处理重叠消歧，目前只有freq策略能够做到
+                        overlap_surface_entity_with_pos = {}  # 获得每个待链接字面值的“唯一”映射
+                        overlap_surface_entity_with_pos[surface0] = ([l, r], entity_type0)
+                        for ll in range(l + 1, r):
+                            rr, entity_types_2 = self.dig_trie(sent, ll)
+                            if rr != -1 and rr <= len(sent):
+                                surface0_2 = sent[ll:rr]  # 字面值
+                                entity_type0_2 = self.choose_from(surface0_2, entity_types_2)
+                                overlap_surface_entity_with_pos[surface0_2] = ([ll, rr], entity_type0_2)
+                        # 再利用频率比较这些映射
+                        candidate, cnt_cand = None, 0
+                        for i, ([ll, rr], entity_type00) in enumerate(overlap_surface_entity_with_pos.values()):
+                            entity00, cnt0 = entity_type00[0], 0
+                            if entity00 in self.entity_count:
+                                cnt0 = self.entity_count[entity00]
+                            if i == 0 or cnt0 > cnt_cand:
+                                candidate, cnt_cand = ([ll, rr], entity_type00), cnt0
+                        entities_info.append(candidate)
+                        l = candidate[0][1]
+                    else:
+                        entities_info.append(([l, r], entity_type0))  # 字典树能根据键找到实体范围，选择则依然需要根据历史等优化
+                        l = r
                 else:
-                    entities_info.append(([l, r], entity_type0))  # 字典树能根据键找到实体范围，选择则依然需要根据历史等优化
+                    entities_info.append(([l, r], entity_types))  # 字典树能根据键找到实体范围，选择则依然需要根据历史等优化
                     l = r
             else:
                 l += 1
         return entities_info
 
-    def entity_linking(self, sent, pinyin_recheck=False, char_recheck=False):
+    def entity_linking(self, sent, pinyin_recheck=False, char_recheck=False, keep_all=False, with_ch_pos=False):
+        """
+        :param sent: 句子/文本
+        :param pinyin_recheck: do pinyin error check to cover more possible candidates
+        :param char_recheck: do character error check to cover more possible candidates
+        :param keep_all: if True, keep all the possibilities of linked entities
+        :param with_ch_pos: if True, also returns ch_pos
+        :return: entities_info：依存弧,列表中的列表。
+        if not keep_all: [([l, r], (entity, type)) for each linked mention m]
+        else: [( [l, r], set((entity, type) for each possible entity of m) ) for each linked mention m]
+        ch_pos: 每个字符对应词语的词性标注（不考虑登录的实体，可用来过滤实体，比如去掉都由名词组成的实体，有可能是错误链接）
+        """
         self.check_prepared()
-        entities_info = self._entity_linking(sent, pinyin_recheck, char_recheck)
-        if pinyin_recheck or char_recheck:
+        entities_info = self._entity_linking(sent, pinyin_recheck, char_recheck, keep_all)
+        if (not keep_all) and (pinyin_recheck or char_recheck):
             self._entity_recheck(sent, entities_info, pinyin_recheck, char_recheck)
-        return entities_info
+        if with_ch_pos:
+            ch_pos = []
+            for word, pos in pseg.cut(sent):
+                ch_pos.extend([pos] * len(word))
+            return entities_info, ch_pos
+        else:
+            return entities_info
 
     def get_linking_mention_candidates(self, sent, pinyin_recheck=False, char_recheck=False):
         mention_cands = defaultdict(list)
@@ -486,17 +509,67 @@ class HarvestText:
             return result
 
     def cut_sentences(self, para, drop_empty_line = True):  # 分句
-        para = re.sub('([。！？\?])([^”’])', r"\1\n\2", para)  # 单字符断句符
+        para = re.sub('([。！？\?!])([^”’])', r"\1\n\2", para)  # 单字符断句符
         para = re.sub('(\.{6})([^”’])', r"\1\n\2", para)  # 英文省略号
         para = re.sub('(\…{2})([^”’])', r"\1\n\2", para)  # 中文省略号
-        para = re.sub('([。！？\?][”’])([^，。！？\?])', r'\1\n\2', para)
+        para = re.sub('([。！？\?!][”’])([^，。！？\?])', r'\1\n\2', para)
         # 如果双引号前有终止符，那么双引号才是句子的终点，把分句符\n放到双引号后，注意前面的几句都小心保留了双引号
         para = para.rstrip()  # 段尾如果有多余的\n就去掉它
         # 很多规则中会考虑分号;，但是这里我把它忽略不计，破折号、英文双引号等同样忽略，需要的再做些简单调整即可。
-        sentences =  para.split("\n")
+        sentences = para.split("\n")
         if drop_empty_line:
             sentences = [sent for sent in sentences if len(sent.strip()) > 0]
         return sentences
+    def clean_text(self, text, remove_url=True, email=True, weibo_at=True, stop_terms=("转发微博",),
+                   emoji=True, weibo_topic=False, deduplicate_space=True,
+                   norm_url=False, norm_html=False, to_url=False):
+        """
+        进行各种文本清洗操作，微博中的特殊格式，网址，email，等等
+        :param text: 输入文本
+        :param remove_url: （默认使用）是否去除网址
+        :param email: （默认使用）是否去除email
+        :param weibo_at: （默认使用）是否去除微博的@相关文本
+        :param stop_terms: 去除文本中的一些特定词语，默认参数为("转发微博",)
+        :param emoji: （默认使用）去除[]包围的文本，一般是表情符号
+        :param weibo_topic: （默认不使用）去除##包围的文本，一般是微博话题
+        :param deduplicate_space:（默认使用）合并文本中间的多个空格为一个
+        :param norm_url: （默认不使用）还原URL中的特殊字符为普通格式，如(%20转为空格)
+        :param norm_html: （默认不使用）还原HTML中的特殊字符为普通格式，如(&nbsp;转为空格)
+        :param to_url: （默认不使用）将普通格式的字符转为还原URL中的特殊字符，用于请求，如(空格转为%20)
+        :return: 清洗后的文本
+        """
+        # 反向的矛盾设置
+        if norm_url and to_url:
+            raise Exception("norm_url和to_url是矛盾的设置")
+        if norm_html:
+            text = html.unescape(text)
+        if to_url:
+            text = urllib.parse.quote(text)
+        if remove_url:
+            URL_REGEX = re.compile(
+                r'(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:\'".,<>?«»“”‘’]))',
+                re.IGNORECASE)
+            text = re.sub(URL_REGEX, "", text)
+        if norm_url:
+            text = urllib.parse.unquote(text)
+        if email:
+            EMAIL_REGEX = re.compile(r"[-a-z0-9_.]+@(?:[-a-z0-9]+\.)+[a-z]{2,6}", re.IGNORECASE)
+            text = re.sub(EMAIL_REGEX, "", text)
+        if weibo_at:
+            text = re.sub(r"(回复)?(//)?\s*@\S*?\s*(:| |$)", " ", text)  # 去除正文中的@和回复/转发中的用户名
+        if emoji:
+            text = re.sub(r"\[\S+\]", "", text)  # 去除表情符号
+        if weibo_topic:
+            text = re.sub(r"#\S+#", "", text)  # 去除话题内容
+        if deduplicate_space:
+            text = re.sub(r"\s+", " ", text)   # 合并正文中过多的空格
+        assert hasattr(stop_terms, "__init__"), Exception("去除的词语必须是一个可迭代对象")
+        if type(stop_terms) == str:
+            text = text.replace(stop_terms, "")
+        else:
+            for x in stop_terms:
+                text = text.replace(x, "")
+        return text.strip()
 
     def named_entity_recognition(self, sent, standard_name=False):
         """

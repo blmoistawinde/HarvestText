@@ -25,6 +25,8 @@ HarvestText是一个专注无（弱）监督方法，能够整合领域知识（
 - 基本处理
 	- [精细分词分句](#实体链接)
 		- 可包含指定词和类别的分词。充分考虑省略号，双引号等特殊标点的分句。
+	- [文本清洗(更新)](#文本清洗)
+	
 	- [实体链接](#实体链接)
 		- 把别名，缩写与他们的标准名联系起来。 
 	- [命名实体识别](#命名实体识别)
@@ -128,8 +130,75 @@ print(ht.cut_sentences(para))
 
 如果手头暂时没有可用的词典，不妨看看本库[内置资源](#内置资源)中的领域词典是否适合你的需要。
 
-\*现在本库能够也用一些基本策略来处理复杂的实体消歧任务（比如一词多义【"老师"是指"A老师"还是"B老师"？】、候选词重叠【xx市长/江yy？、xx市长/江yy？】）。
-具体可见[linking_strategy()](./examples/basics.py#linking_strategy)
+如果同一个名字有多个可能对应的实体（"打球的李娜和唱歌的李娜不是一个人"），可以设置`keep_all=True`来保留多个候选，后面可以再采用别的策略消歧，见[el_keep_all()](./examples/basics.py#L277)
+
+如果连接到的实体过多，其中有一些明显不合理，可以采用一些策略来过滤，这里给出了一个例子[filter_el_with_rule()](./examples/basics.py#L284)
+
+本库能够也用一些基本策略来处理复杂的实体消歧任务（比如一词多义【"老师"是指"A老师"还是"B老师"？】、候选词重叠【xx市长/江yy？、xx市长/江yy？】）。
+具体可见[linking_strategy()](./examples/basics.py#L151)
+
+<a id="文本清洗"> </a>
+### 文本清洗
+可以处理文本中的特殊字符，或者去掉文本中不希望出现的一些特殊格式。
+
+包括：微博的@，表情符；网址；email；html代码中的&nbsp;一类的特殊字符；网址内的%20一类的特殊字符
+
+例子如下：
+```python
+print("各种清洗文本")
+ht0 = HarvestText()
+# 默认的设置可用于清洗微博文本
+text1 = "回复@钱旭明QXM:[嘻嘻][嘻嘻] //@钱旭明QXM:杨大哥[good][good]"
+print("清洗微博【@和表情符等】")
+print("原：", text1)
+print("清洗后：", ht0.clean_text(text1))
+# URL的清理
+text1 = "【#赵薇#：正筹备下一部电影 但不是青春片....http://t.cn/8FLopdQ"
+print("清洗网址URL")
+print("原：", text1)
+print("清洗后：", ht0.clean_text(text1, remove_url=True))
+# 清洗邮箱
+text1 = "我的邮箱是abc@demo.com，欢迎联系"
+print("清洗邮箱")
+print("原：", text1)
+print("清洗后：", ht0.clean_text(text1, email=True))
+# 处理URL转义字符
+text1 = "www.%E4%B8%AD%E6%96%87%20and%20space.com"
+print("URL转正常字符")
+print("原：", text1)
+print("清洗后：", ht0.clean_text(text1, norm_url=True, remove_url=False))
+text1 = "www.中文 and space.com"
+print("正常字符转URL[含有中文和空格的request需要注意]")
+print("原：", text1)
+print("清洗后：", ht0.clean_text(text1, to_url=True, remove_url=False))
+# 处理HTML转义字符
+text1 = "&lt;a c&gt;&nbsp;&#x27;&#x27;"
+print("HTML转正常字符")
+print("原：", text1)
+print("清洗后：", ht0.clean_text(text1, norm_html=True))
+```
+
+```
+各种清洗文本
+清洗微博【@和表情符等】
+原： 回复@钱旭明QXM:[嘻嘻][嘻嘻] //@钱旭明QXM:杨大哥[good][good]
+清洗后： 杨大哥
+清洗网址URL
+原： 【#赵薇#：正筹备下一部电影 但不是青春片....http://t.cn/8FLopdQ
+清洗后： 【#赵薇#：正筹备下一部电影 但不是青春片....
+清洗邮箱
+原： 我的邮箱是abc@demo.com，欢迎联系
+清洗后： 我的邮箱是，欢迎联系
+URL转正常字符
+原： www.%E4%B8%AD%E6%96%87%20and%20space.com
+清洗后： www.中文 and space.com
+正常字符转URL[含有中文和空格的request需要注意]
+原： www.中文 and space.com
+清洗后： www.%E4%B8%AD%E6%96%87%20and%20space.com
+HTML转正常字符
+原： &lt;a c&gt;&nbsp;&#x27;&#x27;
+清洗后： <a c> ''
+```
 
 <a id="命名实体识别"> </a>
 ### 命名实体识别
