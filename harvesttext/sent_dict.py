@@ -109,4 +109,4 @@ if __name__ == "__main__":
     print("球员", sent_dict["球员"])
     print("上限", sent_dict["上限"])
     print(sent_dict.analyse_sent(docs[0]))
-    
+

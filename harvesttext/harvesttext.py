@@ -3,6 +3,7 @@ import os
 import re
 import json
 import numpy as np
+import scipy.special
 import pandas as pd
 import html
 import urllib
@@ -12,7 +13,9 @@ import jieba.posseg as pseg
 from collections import defaultdict
 from .word_discoverer import WordDiscoverer
 from .sent_dict import SentDict
-from .resources import get_qh_sent_dict
+from .resources import get_qh_sent_dict, get_baidu_stopwords
+from .texttile import TextTile
+from .utils import sent_sim_textrank, sent_sim_cos
 import logging
 import warnings
 from pypinyin import lazy_pinyin, pinyin
@@ -343,13 +346,11 @@ class HarvestText:
             mention_cands |= self.pinyin_mention_dict[pinyin]
         return list(mention_cands)
 
-    def choose_from_multi_mentions(self,mention_cands,sent=""):
+    def choose_from_multi_mentions(self, mention_cands, sent=""):
         surface0 = mention_cands[0]
         entity0, type0 = self.mention2entity(surface0)
         self._link_record(surface0, entity0)
         return entity0, type0
-
-
 
     def _entity_recheck(self, sent, entities_info, pinyin_recheck, char_recheck):
         sent2 = self.decoref(sent, entities_info)
@@ -508,7 +509,17 @@ class HarvestText:
         else:
             return result
 
-    def cut_sentences(self, para, drop_empty_line = True):  # 分句
+    def cut_sentences(self, para, drop_empty_line=True, strip=True, deduplicate=False):
+        """
+
+        :param para: 输入文本
+        :param drop_empty_line: 是否丢弃空行
+        :param strip: 是否对每一句话做一次strip
+        :param deduplicate: 是否对连续标点去重，帮助对连续标点结尾的句子分句
+        :return: sentences: list of str
+        """
+        if deduplicate:
+            para = re.sub(r"([。！？\!\?])\1+", r"\1", para)
         para = re.sub('([。！？\?!])([^”’])', r"\1\n\2", para)  # 单字符断句符
         para = re.sub('(\.{6})([^”’])', r"\1\n\2", para)  # 英文省略号
         para = re.sub('(\…{2})([^”’])', r"\1\n\2", para)  # 中文省略号
@@ -517,12 +528,62 @@ class HarvestText:
         para = para.rstrip()  # 段尾如果有多余的\n就去掉它
         # 很多规则中会考虑分号;，但是这里我把它忽略不计，破折号、英文双引号等同样忽略，需要的再做些简单调整即可。
         sentences = para.split("\n")
+        if strip:
+            sentences = [sent.strip() for sent in sentences]
         if drop_empty_line:
             sentences = [sent for sent in sentences if len(sent.strip()) > 0]
         return sentences
+
+    def cut_paragraphs(self, text, num_paras=None, block_sents=3, std_weight=0.5,
+                       align_boundary=True, use_stopwords=True, remove_puncts=True):
+        """
+
+        :param text:
+        :param num_paras: (默认为None)可以手动设置想要划分的段落数，也可以保留默认值None，让算法自动确定
+        :param block_sents: 算法的参数，将几句句子分为一个block。一般越大，算法自动划分的段落越少
+        :param std_weight: 算法的参数。一般越大，算法自动划分的段落越多
+        :param align_boundary: 新划分的段落是否要与原有的换行处对齐
+        :param use_stopwords: （默认为True）是否在算法中引入停用词，一般能够提升准确度
+        :param remove_puncts: （默认为True）是否在算法中去除标点符号，一般能够提升准确度
+        :return:
+        """
+        if num_paras is not None:
+            assert num_paras > 0, "Should give a positive number of num_paras"
+        stopwords = get_baidu_stopwords() if use_stopwords else set()
+        if align_boundary:
+            paras = [para.strip() for para in text.split("\n") if len(para.strip()) > 0]
+            if num_paras is not None:
+                # assert num_paras <= len(paras), "The new segmented paragraphs must be no less than the original ones"
+                if num_paras >= len(paras):
+                    return paras
+            original_boundary_ids = []
+            sentences = []
+            for para in paras:
+                sentences.extend(self.cut_sentences(para))
+                original_boundary_ids.append(len(sentences))
+        else:
+            original_boundary_ids = None
+            sentences = self.cut_sentences(text)
+        # with entity resolution, can better decide similarity
+        if remove_puncts:
+            allpuncs = re.compile(
+                r"[，\_《。》、？；：‘’＂“”【「】」、·！@￥…（）—\,\<\.\>\/\?\;\:\'\"\[\]\{\}\~\`\!\@\#\$\%\^\&\*\(\)\-\=\+]")
+            sent_words = [re.sub(allpuncs, "",
+                                 self.seg(sent, standard_name=True, stopwords=stopwords, return_sent=True)
+                                 ).split()
+                          for sent in sentences]
+        else:
+            sent_words = [self.seg(sent, standard_name=True, stopwords=stopwords)
+                          for sent in sentences]
+        texttiler = TextTile()
+        predicted_boundary_ids = texttiler.cut_paragraphs(sent_words, num_paras, block_sents, std_weight,
+                                                          align_boundary, original_boundary_ids)
+        predicted_paras = ["".join(sentences[l:r]) for l, r in zip([0]+predicted_boundary_ids[:-1], predicted_boundary_ids)]
+        return predicted_paras
+
     def clean_text(self, text, remove_url=True, email=True, weibo_at=True, stop_terms=("转发微博",),
                    emoji=True, weibo_topic=False, deduplicate_space=True,
-                   norm_url=False, norm_html=False, to_url=False):
+                   norm_url=False, norm_html=False, to_url=False, remove_puncts=False):
         """
         进行各种文本清洗操作，微博中的特殊格式，网址，email，等等
         :param text: 输入文本
@@ -536,6 +597,7 @@ class HarvestText:
         :param norm_url: （默认不使用）还原URL中的特殊字符为普通格式，如(%20转为空格)
         :param norm_html: （默认不使用）还原HTML中的特殊字符为普通格式，如(&nbsp;转为空格)
         :param to_url: （默认不使用）将普通格式的字符转为还原URL中的特殊字符，用于请求，如(空格转为%20)
+        :param remove_puncts: （默认不使用）移除所有标点符号
         :return: 清洗后的文本
         """
         # 反向的矛盾设置
@@ -569,6 +631,10 @@ class HarvestText:
         else:
             for x in stop_terms:
                 text = text.replace(x, "")
+        if remove_puncts:
+            allpuncs = re.compile(
+                r"[，\_《。》、？；：‘’＂“”【「】」、·！@￥…（）—\,\<\.\>\/\?\;\:\'\"\[\]\{\}\~\`\!\@\#\$\%\^\&\*\(\)\-\=\+]")
+            text = re.sub(allpuncs, "", text)
         return text.strip()
 
     def named_entity_recognition(self, sent, standard_name=False):
@@ -907,26 +973,66 @@ class HarvestText:
     #
     # 文本摘要模块
     #
-    def get_summary(self, docs, topK=5, stopwords=None, with_importance=False, standard_name=True):
+    def get_summary(self, docs, topK=5, stopwords=None, with_importance=False, standard_name=True,
+                    maxlen=None, avoid_repeat=False):
+        """
+        使用Textrank算法得到文本中的关键句
+        :param docs: str句子列表
+        :param topK: 选取几个句子, 如果设置了maxlen，则优先考虑长度
+        :param stopwords: 在算法中采用的停用词
+        :param with_importance: 返回时是否包括算法得到的句子重要性
+        :param standard_name: 如果有entity_mention_list的话，在算法中正规化实体名，一般有助于提升算法效果
+        :param maxlen: 设置得到的摘要最长不超过多少字数，如果已经达到长度限制但未达到topK句也会停止
+        :param avoid_repeat: 使用MMR principle惩罚与已经抽取的摘要重复的句子，避免重复
+        :return: 句子列表，或者with_importance=True时，（句子，分数）列表
+        """
+        assert topK > 0
         import networkx as nx
-        def sent_sim1(words1, words2):
-            if len(words1) <= 1 or len(words2) <= 1:
-                return 0.0
-            return (len(set(words1) & set(words2))) / (np.log2(len(words1)) + np.log2(len(words2)))
-
+        maxlen = float('inf') if maxlen is None else maxlen
         # 使用standard_name,相似度可以基于实体链接的结果计算而更加准确
         sents = [self.seg(doc.strip(), standard_name=standard_name, stopwords=stopwords) for doc in docs]
         sents = [sent for sent in sents if len(sent) > 0]
         G = nx.Graph()
         for u, v in combinations(range(len(sents)), 2):
-            G.add_edge(u, v, weight=sent_sim1(sents[u], sents[v]))
+            G.add_edge(u, v, weight=sent_sim_textrank(sents[u], sents[v]))
 
         pr = nx.pagerank_scipy(G)
         pr_sorted = sorted(pr.items(), key=lambda x: x[1], reverse=True)
-        if with_importance:
-            return [(docs[i], imp) for i, imp in pr_sorted[:topK]]
+        if not avoid_repeat:
+            ret = []
+            curr_len = 0
+            for i, imp in pr_sorted[:topK]:
+                curr_len += len(docs[i])
+                if curr_len > maxlen: break
+                ret.append((docs[i], imp) if with_importance else docs[i])
+            return [ ]
         else:
-            return [docs[i] for i, rank in pr_sorted[:topK]]
+            assert topK <= len(sents)
+            ret = []
+            curr_len = 0
+            curr_sumy_words = []
+            candidate_ids = list(range(len(sents)))
+            i, imp = pr_sorted[0]
+            curr_len += len(docs[i])
+            if curr_len > maxlen:
+                return ret
+            ret.append((docs[i], imp) if with_importance else docs[i])
+            curr_sumy_words.extend(sents[i])
+            candidate_ids.remove(i)
+            for iter in range(topK-1):
+                importance = [pr[i] for i in candidate_ids]
+                norm_importance = scipy.special.softmax(importance)
+                redundancy = np.array([sent_sim_cos(curr_sumy_words, sents[i]) for i in candidate_ids])
+                scores = 0.6*norm_importance - 0.4*redundancy
+                id_in_cands = np.argmax(scores)
+                i, imp = candidate_ids[id_in_cands], importance[id_in_cands]
+                curr_len += len(docs[i])
+                if curr_len > maxlen:
+                    return ret
+                ret.append((docs[i], imp) if with_importance else docs[i])
+                curr_sumy_words.extend(sents[i])
+                del candidate_ids[id_in_cands]
+            return ret
 
     #
     # 实体网络模块
