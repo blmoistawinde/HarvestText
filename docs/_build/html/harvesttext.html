@@ -1,0 +1,819 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh_CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>harvesttext package &#8212; HarvestText 0.6.1 文档</title>
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script type="text/javascript" src="_static/translations.js"></script>
+    <link rel="index" title="索引" href="genindex.html" />
+    <link rel="search" title="搜索" href="search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>导航</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="总目录"
+             accesskey="I">索引</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python 模块索引"
+             >模块</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HarvestText 0.6.1 文档</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="harvesttext-package">
+<h1>harvesttext package<a class="headerlink" href="#harvesttext-package" title="永久链接至标题">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="永久链接至标题">¶</a></h2>
+</div>
+<div class="section" id="module-harvesttext.harvesttext">
+<span id="harvesttext-harvesttext-module"></span><h2>harvesttext.harvesttext module<a class="headerlink" href="#module-harvesttext.harvesttext" title="永久链接至标题">¶</a></h2>
+<dl class="class">
+<dt id="harvesttext.harvesttext.HarvestText">
+<em class="property">class </em><code class="sig-prename descclassname">harvesttext.harvesttext.</code><code class="sig-name descname">HarvestText</code><span class="sig-paren">(</span><em class="sig-param">standard_name=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText" title="永久链接至目标">¶</a></dt>
+<dd><p>基类：<code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.add_entities">
+<code class="sig-name descname">add_entities</code><span class="sig-paren">(</span><em class="sig-param">entity_mention_dict=None</em>, <em class="sig-param">entity_type_dict=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.add_entities"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.add_entities" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.add_new_entity">
+<code class="sig-name descname">add_new_entity</code><span class="sig-paren">(</span><em class="sig-param">entity0</em>, <em class="sig-param">mention0=None</em>, <em class="sig-param">type0='添加词'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.add_new_entity"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.add_new_entity" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.add_new_mentions">
+<code class="sig-name descname">add_new_mentions</code><span class="sig-paren">(</span><em class="sig-param">entity_mention_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.add_new_mentions"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.add_new_mentions" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.add_new_words">
+<code class="sig-name descname">add_new_words</code><span class="sig-paren">(</span><em class="sig-param">new_words</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.add_new_words"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.add_new_words" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.add_typed_words">
+<code class="sig-name descname">add_typed_words</code><span class="sig-paren">(</span><em class="sig-param">type_word_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.add_typed_words"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.add_typed_words" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.analyse_sent">
+<code class="sig-name descname">analyse_sent</code><span class="sig-paren">(</span><em class="sig-param">sent</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.analyse_sent"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.analyse_sent" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.build_entity_ego_graph">
+<code class="sig-name descname">build_entity_ego_graph</code><span class="sig-paren">(</span><em class="sig-param">docs</em>, <em class="sig-param">word</em>, <em class="sig-param">min_freq=0</em>, <em class="sig-param">other_min_freq=-1</em>, <em class="sig-param">inv_index={}</em>, <em class="sig-param">used_types=[]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.build_entity_ego_graph"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.build_entity_ego_graph" title="永久链接至目标">¶</a></dt>
+<dd><p>Entity only version of build_word_ego_graph()</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.build_entity_graph">
+<code class="sig-name descname">build_entity_graph</code><span class="sig-paren">(</span><em class="sig-param">docs</em>, <em class="sig-param">min_freq=0</em>, <em class="sig-param">inv_index={}</em>, <em class="sig-param">used_types=[]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.build_entity_graph"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.build_entity_graph" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.build_index">
+<code class="sig-name descname">build_index</code><span class="sig-paren">(</span><em class="sig-param">docs</em>, <em class="sig-param">with_entity=True</em>, <em class="sig-param">with_type=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.build_index"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.build_index" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.build_sent_dict">
+<code class="sig-name descname">build_sent_dict</code><span class="sig-paren">(</span><em class="sig-param">sents</em>, <em class="sig-param">method='PMI'</em>, <em class="sig-param">min_times=5</em>, <em class="sig-param">scale='None'</em>, <em class="sig-param">pos_seeds=None</em>, <em class="sig-param">neg_seeds=None</em>, <em class="sig-param">stopwords=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.build_sent_dict"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.build_sent_dict" title="永久链接至目标">¶</a></dt>
+<dd><p>利用种子词，构建情感词典</p>
+<dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sents</strong> – list of string, 文本列表</p></li>
+<li><p><strong>method</strong> – “PMI”, 使用的算法，目前仅支持PMI</p></li>
+<li><p><strong>min_times</strong> – int, 默认为5， 在所有句子中出现次数少于这个次数的词语将被过滤</p></li>
+<li><p><strong>scale</strong> – {“None”,”0-1”,”+-1”}, 默认为”None”，否则将对情感值进行变换
+若为”0-1”，按照最大为1，最小为0进行线性伸缩，0.5未必是中性
+若为”+-1”, 在正负区间内分别伸缩，保留0作为中性的语义</p></li>
+<li><p><strong>pos_seeds</strong> – list of string, 积极种子词，如不填写将默认采用清华情感词典</p></li>
+<li><p><strong>neg_seeds</strong> – list of string, 消极种子词，如不填写将默认采用清华情感词典</p></li>
+<li><p><strong>stopwords</strong> – list of string, stopwords词，如不填写将不使用</p></li>
+</ul>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p>sent_dict: 构建好的情感词典，可以像dict一样查询单个词语的情感值</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.build_trie">
+<code class="sig-name descname">build_trie</code><span class="sig-paren">(</span><em class="sig-param">new_word</em>, <em class="sig-param">entity</em>, <em class="sig-param">entity_type</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.build_trie"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.build_trie" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.build_word_ego_graph">
+<code class="sig-name descname">build_word_ego_graph</code><span class="sig-paren">(</span><em class="sig-param">docs</em>, <em class="sig-param">word</em>, <em class="sig-param">standard_name=True</em>, <em class="sig-param">min_freq=0</em>, <em class="sig-param">other_min_freq=-1</em>, <em class="sig-param">stopwords=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.build_word_ego_graph"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.build_word_ego_graph" title="永久链接至目标">¶</a></dt>
+<dd><p>根据文本和指定限定词，获得以限定词为中心的各词语的关系。
+限定词可以是一个特定的方面（衣食住行这类文档），这样就可以从词语中心图中获得关于这个方面的简要信息</p>
+<dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>docs</strong> – 文本的列表</p></li>
+<li><p><strong>word</strong> – 限定词</p></li>
+<li><p><strong>standard_name</strong> – 把所有实体的指称化为标准实体名</p></li>
+<li><p><strong>stopwords</strong> – 需要过滤的停用词</p></li>
+<li><p><strong>min_freq</strong> – 作为边加入到图中的与中心词最小共现次数，用于筛掉可能过多的边</p></li>
+<li><p><strong>other_min_freq</strong> – 中心词以外词语关系的最小共现次数</p></li>
+</ul>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p>G（networxX中的Graph）</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.check_prepared">
+<code class="sig-name descname">check_prepared</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.check_prepared"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.check_prepared" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.choose_from">
+<code class="sig-name descname">choose_from</code><span class="sig-paren">(</span><em class="sig-param">surface0</em>, <em class="sig-param">entity_types</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.choose_from"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.choose_from" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.choose_from_multi_mentions">
+<code class="sig-name descname">choose_from_multi_mentions</code><span class="sig-paren">(</span><em class="sig-param">mention_cands</em>, <em class="sig-param">sent=''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.choose_from_multi_mentions"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.choose_from_multi_mentions" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.clean_text">
+<code class="sig-name descname">clean_text</code><span class="sig-paren">(</span><em class="sig-param">text</em>, <em class="sig-param">remove_url=True</em>, <em class="sig-param">email=True</em>, <em class="sig-param">weibo_at=True</em>, <em class="sig-param">stop_terms=('转发微博'</em>, <em class="sig-param">)</em>, <em class="sig-param">emoji=True</em>, <em class="sig-param">weibo_topic=False</em>, <em class="sig-param">deduplicate_space=True</em>, <em class="sig-param">norm_url=False</em>, <em class="sig-param">norm_html=False</em>, <em class="sig-param">to_url=False</em>, <em class="sig-param">remove_puncts=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.clean_text"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.clean_text" title="永久链接至目标">¶</a></dt>
+<dd><p>进行各种文本清洗操作，微博中的特殊格式，网址，email，等等</p>
+<dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>text</strong> – 输入文本</p></li>
+<li><p><strong>remove_url</strong> – （默认使用）是否去除网址</p></li>
+<li><p><strong>email</strong> – （默认使用）是否去除email</p></li>
+<li><p><strong>weibo_at</strong> – （默认使用）是否去除微博的&#64;相关文本</p></li>
+<li><p><strong>stop_terms</strong> – 去除文本中的一些特定词语，默认参数为(“转发微博”,)</p></li>
+<li><p><strong>emoji</strong> – （默认使用）去除[]包围的文本，一般是表情符号</p></li>
+<li><p><strong>weibo_topic</strong> – （默认不使用）去除##包围的文本，一般是微博话题</p></li>
+<li><p><strong>deduplicate_space</strong> – （默认使用）合并文本中间的多个空格为一个</p></li>
+<li><p><strong>norm_url</strong> – （默认不使用）还原URL中的特殊字符为普通格式，如(%20转为空格)</p></li>
+<li><p><strong>norm_html</strong> – （默认不使用）还原HTML中的特殊字符为普通格式，如(&amp;nbsp;转为空格)</p></li>
+<li><p><strong>to_url</strong> – （默认不使用）将普通格式的字符转为还原URL中的特殊字符，用于请求，如(空格转为%20)</p></li>
+<li><p><strong>remove_puncts</strong> – （默认不使用）移除所有标点符号</p></li>
+</ul>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p>清洗后的文本</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.clear">
+<code class="sig-name descname">clear</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.clear"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.clear" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.cut_paragraphs">
+<code class="sig-name descname">cut_paragraphs</code><span class="sig-paren">(</span><em class="sig-param">text</em>, <em class="sig-param">num_paras=None</em>, <em class="sig-param">block_sents=3</em>, <em class="sig-param">std_weight=0.5</em>, <em class="sig-param">align_boundary=True</em>, <em class="sig-param">use_stopwords=True</em>, <em class="sig-param">remove_puncts=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.cut_paragraphs"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.cut_paragraphs" title="永久链接至目标">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>text</strong> – </p></li>
+<li><p><strong>num_paras</strong> – (默认为None)可以手动设置想要划分的段落数，也可以保留默认值None，让算法自动确定</p></li>
+<li><p><strong>block_sents</strong> – 算法的参数，将几句句子分为一个block。一般越大，算法自动划分的段落越少</p></li>
+<li><p><strong>std_weight</strong> – 算法的参数。一般越大，算法自动划分的段落越多</p></li>
+<li><p><strong>align_boundary</strong> – 新划分的段落是否要与原有的换行处对齐</p></li>
+<li><p><strong>use_stopwords</strong> – （默认为True）是否在算法中引入停用词，一般能够提升准确度</p></li>
+<li><p><strong>remove_puncts</strong> – （默认为True）是否在算法中去除标点符号，一般能够提升准确度</p></li>
+</ul>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.cut_sentences">
+<code class="sig-name descname">cut_sentences</code><span class="sig-paren">(</span><em class="sig-param">para</em>, <em class="sig-param">drop_empty_line=True</em>, <em class="sig-param">strip=True</em>, <em class="sig-param">deduplicate=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.cut_sentences"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.cut_sentences" title="永久链接至目标">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>para</strong> – 输入文本</p></li>
+<li><p><strong>drop_empty_line</strong> – 是否丢弃空行</p></li>
+<li><p><strong>strip</strong> – 是否对每一句话做一次strip</p></li>
+<li><p><strong>deduplicate</strong> – 是否对连续标点去重，帮助对连续标点结尾的句子分句</p></li>
+</ul>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p>sentences: list of str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.decoref">
+<code class="sig-name descname">decoref</code><span class="sig-paren">(</span><em class="sig-param">sent</em>, <em class="sig-param">entities_info</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.decoref"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.decoref" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.dependency_parse">
+<code class="sig-name descname">dependency_parse</code><span class="sig-paren">(</span><em class="sig-param">sent</em>, <em class="sig-param">standard_name=False</em>, <em class="sig-param">stopwords=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.dependency_parse"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.dependency_parse" title="永久链接至目标">¶</a></dt>
+<dd><p>依存句法分析，调用pyhanlp的接口，并且融入了harvesttext的实体识别机制。不保证高准确率。</p>
+<dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sent</strong> – </p></li>
+<li><p><strong>standard_name</strong> – </p></li>
+<li><p><strong>stopwords</strong> – </p></li>
+</ul>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p>arcs：依存弧,列表中的列表。
+[[词语id,词语字面值或实体名(standard_name控制),词性，依存关系，依存子词语id] for 每个词语]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.deprepare">
+<code class="sig-name descname">deprepare</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.deprepare"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.deprepare" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.dig_trie">
+<code class="sig-name descname">dig_trie</code><span class="sig-paren">(</span><em class="sig-param">sent</em>, <em class="sig-param">l</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.dig_trie"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.dig_trie" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.entity_linking">
+<code class="sig-name descname">entity_linking</code><span class="sig-paren">(</span><em class="sig-param">sent</em>, <em class="sig-param">pinyin_recheck=False</em>, <em class="sig-param">char_recheck=False</em>, <em class="sig-param">keep_all=False</em>, <em class="sig-param">with_ch_pos=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.entity_linking"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.entity_linking" title="永久链接至目标">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sent</strong> – 句子/文本</p></li>
+<li><p><strong>pinyin_recheck</strong> – do pinyin error check to cover more possible candidates</p></li>
+<li><p><strong>char_recheck</strong> – do character error check to cover more possible candidates</p></li>
+<li><p><strong>keep_all</strong> – if True, keep all the possibilities of linked entities</p></li>
+<li><p><strong>with_ch_pos</strong> – if True, also returns ch_pos</p></li>
+</ul>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p>entities_info：依存弧,列表中的列表。
+if not keep_all: [([l, r], (entity, type)) for each linked mention m]
+else: [( [l, r], set((entity, type) for each possible entity of m) ) for each linked mention m]
+ch_pos: 每个字符对应词语的词性标注（不考虑登录的实体，可用来过滤实体，比如去掉都由名词组成的实体，有可能是错误链接）</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.find_entity_with_rule">
+<code class="sig-name descname">find_entity_with_rule</code><span class="sig-paren">(</span><em class="sig-param">text</em>, <em class="sig-param">rulesets=[]</em>, <em class="sig-param">add_to_dict=True</em>, <em class="sig-param">type0='添加词'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.find_entity_with_rule"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.find_entity_with_rule" title="永久链接至目标">¶</a></dt>
+<dd><p>利用规则从分词结果中的词语找到实体，并可以赋予相应的类型再加入实体库</p>
+<dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>text</strong> – string, 一段文本</p></li>
+<li><p><strong>rulesets</strong> – list of (tuple of rules or single rule) from match_patterns,
+list中包含多个规则，满足其中一种规则的词就认为属于这个type
+而每种规则由tuple或单个条件(pattern)表示，一个词必须满足其中的一个或多个条件。</p></li>
+<li><p><strong>add_to_dict</strong> – 是否把找到的结果直接加入词典</p></li>
+<li><p><strong>type0</strong> – 赋予满足条件的词语的实体类型, 仅当add_to_dict时才有意义</p></li>
+</ul>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p>found_entities</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.get_entity_counts">
+<code class="sig-name descname">get_entity_counts</code><span class="sig-paren">(</span><em class="sig-param">docs</em>, <em class="sig-param">inv_index</em>, <em class="sig-param">used_type=[]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.get_entity_counts"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.get_entity_counts" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.get_linking_mention_candidates">
+<code class="sig-name descname">get_linking_mention_candidates</code><span class="sig-paren">(</span><em class="sig-param">sent</em>, <em class="sig-param">pinyin_recheck=False</em>, <em class="sig-param">char_recheck=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.get_linking_mention_candidates"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.get_linking_mention_candidates" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.get_pinyin_correct_candidates">
+<code class="sig-name descname">get_pinyin_correct_candidates</code><span class="sig-paren">(</span><em class="sig-param">word</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.get_pinyin_correct_candidates"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.get_pinyin_correct_candidates" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.get_summary">
+<code class="sig-name descname">get_summary</code><span class="sig-paren">(</span><em class="sig-param">docs</em>, <em class="sig-param">topK=5</em>, <em class="sig-param">stopwords=None</em>, <em class="sig-param">with_importance=False</em>, <em class="sig-param">standard_name=True</em>, <em class="sig-param">maxlen=None</em>, <em class="sig-param">avoid_repeat=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.get_summary"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.get_summary" title="永久链接至目标">¶</a></dt>
+<dd><p>使用Textrank算法得到文本中的关键句</p>
+<dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>docs</strong> – str句子列表</p></li>
+<li><p><strong>topK</strong> – 选取几个句子, 如果设置了maxlen，则优先考虑长度</p></li>
+<li><p><strong>stopwords</strong> – 在算法中采用的停用词</p></li>
+<li><p><strong>with_importance</strong> – 返回时是否包括算法得到的句子重要性</p></li>
+<li><p><strong>standard_name</strong> – 如果有entity_mention_list的话，在算法中正规化实体名，一般有助于提升算法效果</p></li>
+<li><p><strong>maxlen</strong> – 设置得到的摘要最长不超过多少字数，如果已经达到长度限制但未达到topK句也会停止</p></li>
+<li><p><strong>avoid_repeat</strong> – 使用MMR principle惩罚与已经抽取的摘要重复的句子，避免重复</p></li>
+</ul>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p>句子列表，或者with_importance=True时，（句子，分数）列表</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.hanlp_prepare">
+<code class="sig-name descname">hanlp_prepare</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.hanlp_prepare"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.hanlp_prepare" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.mention2entity">
+<code class="sig-name descname">mention2entity</code><span class="sig-paren">(</span><em class="sig-param">mention</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.mention2entity"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.mention2entity" title="永久链接至目标">¶</a></dt>
+<dd><p>找到单个指称对应的实体</p>
+<dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><p><strong>mention</strong> – 指称</p>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p>如果存在对应实体，则返回（实体,类型），否则返回None, None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.named_entity_recognition">
+<code class="sig-name descname">named_entity_recognition</code><span class="sig-paren">(</span><em class="sig-param">sent</em>, <em class="sig-param">standard_name=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.named_entity_recognition"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.named_entity_recognition" title="永久链接至目标">¶</a></dt>
+<dd><p>利用pyhanlp的命名实体识别，找到句子中的（人名，地名，机构名）三种实体。harvesttext会预先链接已知实体</p>
+<dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sent</strong> – </p></li>
+<li><p><strong>standard_name</strong> – </p></li>
+</ul>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p>发现的命名实体信息，字典 {实体名: 实体类型}</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.posseg">
+<code class="sig-name descname">posseg</code><span class="sig-paren">(</span><em class="sig-param">sent</em>, <em class="sig-param">standard_name=False</em>, <em class="sig-param">stopwords=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.posseg"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.posseg" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.prepare">
+<code class="sig-name descname">prepare</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.prepare"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.prepare" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.remove_entity">
+<code class="sig-name descname">remove_entity</code><span class="sig-paren">(</span><em class="sig-param">entity</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.remove_entity"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.remove_entity" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.remove_mention">
+<code class="sig-name descname">remove_mention</code><span class="sig-paren">(</span><em class="sig-param">mention</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.remove_mention"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.remove_mention" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.search_entity">
+<code class="sig-name descname">search_entity</code><span class="sig-paren">(</span><em class="sig-param">query</em>, <em class="sig-param">docs</em>, <em class="sig-param">inv_index</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.search_entity"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.search_entity" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.search_word_trie">
+<code class="sig-name descname">search_word_trie</code><span class="sig-paren">(</span><em class="sig-param">word</em>, <em class="sig-param">tolerance=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.search_word_trie"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.search_word_trie" title="永久链接至目标">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>word</strong> – </p></li>
+<li><p><strong>tolerance</strong> – </p></li>
+</ul>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.seg">
+<code class="sig-name descname">seg</code><span class="sig-paren">(</span><em class="sig-param">sent</em>, <em class="sig-param">standard_name=False</em>, <em class="sig-param">stopwords=None</em>, <em class="sig-param">return_sent=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.seg"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.seg" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.set_linking_strategy">
+<code class="sig-name descname">set_linking_strategy</code><span class="sig-paren">(</span><em class="sig-param">strategy</em>, <em class="sig-param">lastest_mention=None</em>, <em class="sig-param">entity_freq=None</em>, <em class="sig-param">type_freq=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.set_linking_strategy"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.set_linking_strategy" title="永久链接至目标">¶</a></dt>
+<dd><p>为实体链接设定一些简单策略，目前可选的有：’None’,’freq’,’latest’,’latest&amp;freq’</p>
+<blockquote>
+<div><p>‘None’: 默认选择候选实体字典序第一个</p>
+<p>‘freq’: 对于单个字面值，选择其候选实体中之前出现最频繁的一个。对于多个重叠字面值，选择其中候选实体出现最频繁的一个进行连接【每个字面值已经确定唯一映射】。</p>
+<p>‘latest’: 对于单个字面值，如果在最近有可以确定的映射，就使用最近的映射。</p>
+<p>‘latest’- 对于职称等作为代称的情况可能会比较有用。</p>
+<p>比如”经理”可能代指很多人，但是第一次提到的时候应该会包括姓氏。我们就可以记忆这次信息，在后面用来消歧。</p>
+<p>‘freq’ - 单字面值例：’市长’+{‘A市长’:5,’B市长’:3} -&gt; ‘A市长’</p>
+<p>重叠字面值例，’xx市长江yy’+{‘xx市长’:5,’长江yy’:3}+{‘市长’:’xx市长’}+{‘长江’:’长江yy’} -&gt; ‘xx市长’</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>strategy</strong> – 可选 ‘None’,’freq’,’latest’,’latest&amp;freq’ 中的一个</p></li>
+<li><p><strong>lastest_mention</strong> – dict,用于’latest’,预设</p></li>
+<li><p><strong>entity_freq</strong> – dict,用于’freq’,预设某实体的优先级（词频）</p></li>
+<li><p><strong>type_freq</strong> – dict,用于’freq’,预设类别所有实体的优先级（词频）</p></li>
+</ul>
+</dd>
+</dl>
+<p>:return None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.triple_extraction">
+<code class="sig-name descname">triple_extraction</code><span class="sig-paren">(</span><em class="sig-param">sent</em>, <em class="sig-param">standard_name=False</em>, <em class="sig-param">stopwords=None</em>, <em class="sig-param">expand='all'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.triple_extraction"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.triple_extraction" title="永久链接至目标">¶</a></dt>
+<dd><p>利用主谓宾等依存句法关系，找到句子中有意义的三元组。
+很多代码参考：<a class="reference external" href="https://github.com/liuhuanyong/EventTriplesExtraction">https://github.com/liuhuanyong/EventTriplesExtraction</a>
+不保证高准确率。</p>
+<dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sent</strong> – </p></li>
+<li><p><strong>standard_name</strong> – </p></li>
+<li><p><strong>stopwords</strong> – </p></li>
+<li><p><strong>expand</strong> – 默认”all”：扩展所有主谓词，”exclude_entity”：不扩展已知实体，可以保留标准的实体名，用于链接。”None”:不扩展</p></li>
+</ul>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.harvesttext.HarvestText.word_discover">
+<code class="sig-name descname">word_discover</code><span class="sig-paren">(</span><em class="sig-param">doc</em>, <em class="sig-param">threshold_seeds=[]</em>, <em class="sig-param">auto_param=True</em>, <em class="sig-param">excluding_types=[]</em>, <em class="sig-param">excluding_words=[]</em>, <em class="sig-param">max_word_len=5</em>, <em class="sig-param">min_freq=5e-05</em>, <em class="sig-param">min_entropy=1.4</em>, <em class="sig-param">min_aggregation=50</em>, <em class="sig-param">ent_threshold='both'</em>, <em class="sig-param">mem_saving=None</em>, <em class="sig-param">sort_by='freq'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/harvesttext.html#HarvestText.word_discover"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.harvesttext.HarvestText.word_discover" title="永久链接至目标">¶</a></dt>
+<dd><p>新词发现</p>
+<dl class="field-list simple">
+<dt class="field-odd">参数</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>doc</strong> – (string or list) 待进行新词发现的语料，如果是列表的话，就会自动用换行符拼接</p></li>
+<li><p><strong>threshold_seeds</strong> – list of string, 设定能接受的“质量”最差的种子词，更差的词语将会在新词发现中被过滤</p></li>
+<li><p><strong>auto_param</strong> – bool, 使用默认的算法参数</p></li>
+<li><p><strong>excluding_types</strong> – list of str, 设定要过滤掉的特定词性或已经登录到ht的实体类别</p></li>
+<li><p><strong>excluding_words</strong> – list of str, 设定要过滤掉的特定词</p></li>
+<li><p><strong>mem_saving</strong> – bool or None, 采用一些过滤手段来减少内存使用，但可能影响速度。如果不指定，对长文本自动打开，而对短文本不使用</p></li>
+<li><p><strong>sort_by</strong> – 以下string之一: {‘freq’: 词频, ‘score’: 综合分数, ‘agg’:凝聚度} 按照特定指标对得到的词语信息排序，默认使用词频</p></li>
+</ul>
+</dd>
+<dt class="field-even">返回</dt>
+<dd class="field-even"><p>info: 包含新词作为index, 以及对应各项指标的DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-harvesttext.match_patterns">
+<span id="harvesttext-match-patterns-module"></span><h2>harvesttext.match_patterns module<a class="headerlink" href="#module-harvesttext.match_patterns" title="永久链接至标题">¶</a></h2>
+<dl class="function">
+<dt id="harvesttext.match_patterns.AllEnglish">
+<code class="sig-prename descclassname">harvesttext.match_patterns.</code><code class="sig-name descname">AllEnglish</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/match_patterns.html#AllEnglish"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.match_patterns.AllEnglish" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.match_patterns.AllEnglishOrNum">
+<code class="sig-prename descclassname">harvesttext.match_patterns.</code><code class="sig-name descname">AllEnglishOrNum</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/match_patterns.html#AllEnglishOrNum"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.match_patterns.AllEnglishOrNum" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.match_patterns.Contains">
+<code class="sig-prename descclassname">harvesttext.match_patterns.</code><code class="sig-name descname">Contains</code><span class="sig-paren">(</span><em class="sig-param">span</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/match_patterns.html#Contains"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.match_patterns.Contains" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.match_patterns.EndsWith">
+<code class="sig-prename descclassname">harvesttext.match_patterns.</code><code class="sig-name descname">EndsWith</code><span class="sig-paren">(</span><em class="sig-param">suffix</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/match_patterns.html#EndsWith"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.match_patterns.EndsWith" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.match_patterns.StartsWith">
+<code class="sig-prename descclassname">harvesttext.match_patterns.</code><code class="sig-name descname">StartsWith</code><span class="sig-paren">(</span><em class="sig-param">prefix</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/match_patterns.html#StartsWith"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.match_patterns.StartsWith" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.match_patterns.UpperFirst">
+<code class="sig-prename descclassname">harvesttext.match_patterns.</code><code class="sig-name descname">UpperFirst</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/match_patterns.html#UpperFirst"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.match_patterns.UpperFirst" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.match_patterns.WithLength">
+<code class="sig-prename descclassname">harvesttext.match_patterns.</code><code class="sig-name descname">WithLength</code><span class="sig-paren">(</span><em class="sig-param">length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/match_patterns.html#WithLength"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.match_patterns.WithLength" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-harvesttext.resources">
+<span id="harvesttext-resources-module"></span><h2>harvesttext.resources module<a class="headerlink" href="#module-harvesttext.resources" title="永久链接至标题">¶</a></h2>
+<dl class="function">
+<dt id="harvesttext.resources.get_baidu_stopwords">
+<code class="sig-prename descclassname">harvesttext.resources.</code><code class="sig-name descname">get_baidu_stopwords</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/resources.html#get_baidu_stopwords"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.resources.get_baidu_stopwords" title="永久链接至目标">¶</a></dt>
+<dd><p>获得百度停用词列表
+来源，网上流传的版本：<a class="reference external" href="https://wenku.baidu.com/view/98c46383e53a580216fcfed9.html">https://wenku.baidu.com/view/98c46383e53a580216fcfed9.html</a>
+包含了中英文常见词及部分标点符号
+:return: stopwords: set of string</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.resources.get_qh_sent_dict">
+<code class="sig-prename descclassname">harvesttext.resources.</code><code class="sig-name descname">get_qh_sent_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/resources.html#get_qh_sent_dict"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.resources.get_qh_sent_dict" title="永久链接至目标">¶</a></dt>
+<dd><p>获得参考褒贬义词典：
+褒贬义词典   清华大学 李军</p>
+<p>此资源被用于以下论文中:
+Jun Li and Maosong Sun, Experimental Study on Sentiment Classification of Chinese Review using Machine Learning Techniques, in Proceding of IEEE NLPKE 2007
+李军 中文评论的褒贬义分类实验研究 硕士论文 清华大学 2008
+:return: qh_sent_dict = {“pos”:[words],”neg”:[words]}</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.resources.get_qh_typed_words">
+<code class="sig-prename descclassname">harvesttext.resources.</code><code class="sig-name descname">get_qh_typed_words</code><span class="sig-paren">(</span><em class="sig-param">used_types=['IT', '动物', '医药', '历史人名', '地名', '成语', '法律', '财经', '食物']</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/resources.html#get_qh_typed_words"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.resources.get_qh_typed_words" title="永久链接至目标">¶</a></dt>
+<dd><p>THUOCL：清华大学开放中文词库
+<a class="reference external" href="http://thuocl.thunlp.org/">http://thuocl.thunlp.org/</a>
+IT  财经      成语      地名      历史名人    诗词      医学      饮食      法律      汽车      动物
+:param used_types:
+:return: typed_words: 字典，键为类型，值为该类的词语组成的set</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.resources.get_sanguo">
+<code class="sig-prename descclassname">harvesttext.resources.</code><code class="sig-name descname">get_sanguo</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/resources.html#get_sanguo"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.resources.get_sanguo" title="永久链接至目标">¶</a></dt>
+<dd><p>获得三国演义原文
+:return: [“章节1文本”,”章节2文本”,…]</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.resources.get_sanguo_entity_dict">
+<code class="sig-prename descclassname">harvesttext.resources.</code><code class="sig-name descname">get_sanguo_entity_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/resources.html#get_sanguo_entity_dict"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.resources.get_sanguo_entity_dict" title="永久链接至目标">¶</a></dt>
+<dd><p>获得三国演义中的人名、地名、势力名的知识库。
+自行搭建的简单版，一定有遗漏和错误，仅供参考使用
+:return: entity_mention_dict,entity_type_dict</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-harvesttext.sent_dict">
+<span id="harvesttext-sent-dict-module"></span><h2>harvesttext.sent_dict module<a class="headerlink" href="#module-harvesttext.sent_dict" title="永久链接至标题">¶</a></h2>
+<dl class="class">
+<dt id="harvesttext.sent_dict.SentDict">
+<em class="property">class </em><code class="sig-prename descclassname">harvesttext.sent_dict.</code><code class="sig-name descname">SentDict</code><span class="sig-paren">(</span><em class="sig-param">docs=[]</em>, <em class="sig-param">method='PMI'</em>, <em class="sig-param">min_times=5</em>, <em class="sig-param">scale='None'</em>, <em class="sig-param">pos_seeds=None</em>, <em class="sig-param">neg_seeds=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/sent_dict.html#SentDict"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.sent_dict.SentDict" title="永久链接至目标">¶</a></dt>
+<dd><p>基类：<code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="harvesttext.sent_dict.SentDict.PMI">
+<code class="sig-name descname">PMI</code><span class="sig-paren">(</span><em class="sig-param">w1</em>, <em class="sig-param">w2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/sent_dict.html#SentDict.PMI"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.sent_dict.SentDict.PMI" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.sent_dict.SentDict.SO_PMI">
+<code class="sig-name descname">SO_PMI</code><span class="sig-paren">(</span><em class="sig-param">words</em>, <em class="sig-param">scale='None'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/sent_dict.html#SentDict.SO_PMI"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.sent_dict.SentDict.SO_PMI" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.sent_dict.SentDict.analyse_sent">
+<code class="sig-name descname">analyse_sent</code><span class="sig-paren">(</span><em class="sig-param">words</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/sent_dict.html#SentDict.analyse_sent"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.sent_dict.SentDict.analyse_sent" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.sent_dict.SentDict.build_sent_dict">
+<code class="sig-name descname">build_sent_dict</code><span class="sig-paren">(</span><em class="sig-param">docs=[]</em>, <em class="sig-param">method='PMI'</em>, <em class="sig-param">min_times=5</em>, <em class="sig-param">scale='None'</em>, <em class="sig-param">pos_seeds=None</em>, <em class="sig-param">neg_seeds=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/sent_dict.html#SentDict.build_sent_dict"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.sent_dict.SentDict.build_sent_dict" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.sent_dict.SentDict.get_word_stat">
+<code class="sig-name descname">get_word_stat</code><span class="sig-paren">(</span><em class="sig-param">docs</em>, <em class="sig-param">co=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/sent_dict.html#SentDict.get_word_stat"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.sent_dict.SentDict.get_word_stat" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.sent_dict.SentDict.set_neg_seed">
+<code class="sig-name descname">set_neg_seed</code><span class="sig-paren">(</span><em class="sig-param">neg_seeds</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/sent_dict.html#SentDict.set_neg_seed"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.sent_dict.SentDict.set_neg_seed" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.sent_dict.SentDict.set_pos_seeds">
+<code class="sig-name descname">set_pos_seeds</code><span class="sig-paren">(</span><em class="sig-param">pos_seeds</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/sent_dict.html#SentDict.set_pos_seeds"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.sent_dict.SentDict.set_pos_seeds" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-harvesttext.texttile">
+<span id="harvesttext-texttile-module"></span><h2>harvesttext.texttile module<a class="headerlink" href="#module-harvesttext.texttile" title="永久链接至标题">¶</a></h2>
+<dl class="class">
+<dt id="harvesttext.texttile.TextTile">
+<em class="property">class </em><code class="sig-prename descclassname">harvesttext.texttile.</code><code class="sig-name descname">TextTile</code><a class="reference internal" href="_modules/harvesttext/texttile.html#TextTile"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.texttile.TextTile" title="永久链接至目标">¶</a></dt>
+<dd><p>基类：<code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="harvesttext.texttile.TextTile.cut_paragraphs">
+<code class="sig-name descname">cut_paragraphs</code><span class="sig-paren">(</span><em class="sig-param">sent_words</em>, <em class="sig-param">num_paras=None</em>, <em class="sig-param">block_sents=3</em>, <em class="sig-param">std_weight=0.5</em>, <em class="sig-param">align_boundary=True</em>, <em class="sig-param">original_boundary_ids=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/texttile.html#TextTile.cut_paragraphs"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.texttile.TextTile.cut_paragraphs" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.texttile.TextTile.depth_scores">
+<code class="sig-name descname">depth_scores</code><span class="sig-paren">(</span><em class="sig-param">sim_scores</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/texttile.html#TextTile.depth_scores"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.texttile.TextTile.depth_scores" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-harvesttext.utils">
+<span id="harvesttext-utils-module"></span><h2>harvesttext.utils module<a class="headerlink" href="#module-harvesttext.utils" title="永久链接至标题">¶</a></h2>
+<dl class="function">
+<dt id="harvesttext.utils.sent_sim_cos">
+<code class="sig-prename descclassname">harvesttext.utils.</code><code class="sig-name descname">sent_sim_cos</code><span class="sig-paren">(</span><em class="sig-param">words1</em>, <em class="sig-param">words2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/utils.html#sent_sim_cos"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.utils.sent_sim_cos" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.utils.sent_sim_textrank">
+<code class="sig-prename descclassname">harvesttext.utils.</code><code class="sig-name descname">sent_sim_textrank</code><span class="sig-paren">(</span><em class="sig-param">words1</em>, <em class="sig-param">words2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/utils.html#sent_sim_textrank"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.utils.sent_sim_textrank" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-harvesttext.word_discoverer">
+<span id="harvesttext-word-discoverer-module"></span><h2>harvesttext.word_discoverer module<a class="headerlink" href="#module-harvesttext.word_discoverer" title="永久链接至标题">¶</a></h2>
+<dl class="class">
+<dt id="harvesttext.word_discoverer.WordDiscoverer">
+<em class="property">class </em><code class="sig-prename descclassname">harvesttext.word_discoverer.</code><code class="sig-name descname">WordDiscoverer</code><span class="sig-paren">(</span><em class="sig-param">doc</em>, <em class="sig-param">max_word_len=5</em>, <em class="sig-param">min_freq=5e-05</em>, <em class="sig-param">min_entropy=2.0</em>, <em class="sig-param">min_aggregation=50</em>, <em class="sig-param">ent_threshold='both'</em>, <em class="sig-param">mem_saving=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/word_discoverer.html#WordDiscoverer"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.word_discoverer.WordDiscoverer" title="永久链接至目标">¶</a></dt>
+<dd><p>基类：<code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="harvesttext.word_discoverer.WordDiscoverer.genWords">
+<code class="sig-name descname">genWords</code><span class="sig-paren">(</span><em class="sig-param">doc</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/word_discoverer.html#WordDiscoverer.genWords"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.word_discoverer.WordDiscoverer.genWords" title="永久链接至目标">¶</a></dt>
+<dd><p>Generate all candidate words with their frequency/entropy/aggregation informations
+&#64;param doc the document used for words generation</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.word_discoverer.WordDiscoverer.genWords2">
+<code class="sig-name descname">genWords2</code><span class="sig-paren">(</span><em class="sig-param">doc</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/word_discoverer.html#WordDiscoverer.genWords2"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.word_discoverer.WordDiscoverer.genWords2" title="永久链接至目标">¶</a></dt>
+<dd><p>Generate all candidate words with their frequency/entropy/aggregation informations
+&#64;param doc the document used for words generation</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.word_discoverer.WordDiscoverer.get_df_info">
+<code class="sig-name descname">get_df_info</code><span class="sig-paren">(</span><em class="sig-param">ex_mentions</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/word_discoverer.html#WordDiscoverer.get_df_info"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.word_discoverer.WordDiscoverer.get_df_info" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="harvesttext.word_discoverer.WordInfo">
+<em class="property">class </em><code class="sig-prename descclassname">harvesttext.word_discoverer.</code><code class="sig-name descname">WordInfo</code><span class="sig-paren">(</span><em class="sig-param">text</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/word_discoverer.html#WordInfo"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.word_discoverer.WordInfo" title="永久链接至目标">¶</a></dt>
+<dd><p>基类：<code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Store information of each word, including its freqency, left neighbors and right neighbors</p>
+<dl class="method">
+<dt id="harvesttext.word_discoverer.WordInfo.compute">
+<code class="sig-name descname">compute</code><span class="sig-paren">(</span><em class="sig-param">length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/word_discoverer.html#WordInfo.compute"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.word_discoverer.WordInfo.compute" title="永久链接至目标">¶</a></dt>
+<dd><p>Compute frequency and entropy of this word
+&#64;param length length of the document for training to get words</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.word_discoverer.WordInfo.computeAggregation">
+<code class="sig-name descname">computeAggregation</code><span class="sig-paren">(</span><em class="sig-param">words_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/word_discoverer.html#WordInfo.computeAggregation"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.word_discoverer.WordInfo.computeAggregation" title="永久链接至目标">¶</a></dt>
+<dd><p>Compute aggregation of this word
+&#64;param words_dict frequency dict of all candidate words</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="harvesttext.word_discoverer.WordInfo.update">
+<code class="sig-name descname">update</code><span class="sig-paren">(</span><em class="sig-param">left</em>, <em class="sig-param">right</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/word_discoverer.html#WordInfo.update"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.word_discoverer.WordInfo.update" title="永久链接至目标">¶</a></dt>
+<dd><p>Increase frequency of this word, then append left/right neighbors
+&#64;param left a single character on the left side of this word
+&#64;param right as left is, but on the right side</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.word_discoverer.entropyOfList">
+<code class="sig-prename descclassname">harvesttext.word_discoverer.</code><code class="sig-name descname">entropyOfList</code><span class="sig-paren">(</span><em class="sig-param">cnt_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/word_discoverer.html#entropyOfList"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.word_discoverer.entropyOfList" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.word_discoverer.genSubparts">
+<code class="sig-prename descclassname">harvesttext.word_discoverer.</code><code class="sig-name descname">genSubparts</code><span class="sig-paren">(</span><em class="sig-param">string</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/word_discoverer.html#genSubparts"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.word_discoverer.genSubparts" title="永久链接至目标">¶</a></dt>
+<dd><p>Partition a string into all possible two parts, e.g.
+given “abcd”, generate [(“a”, “bcd”), (“ab”, “cd”), (“abc”, “d”)]
+For string of length 1, return empty list</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.word_discoverer.genSubstr">
+<code class="sig-prename descclassname">harvesttext.word_discoverer.</code><code class="sig-name descname">genSubstr</code><span class="sig-paren">(</span><em class="sig-param">string</em>, <em class="sig-param">n</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/word_discoverer.html#genSubstr"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.word_discoverer.genSubstr" title="永久链接至目标">¶</a></dt>
+<dd><p>Generate all substrings of max length n for string</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.word_discoverer.indexOfSortedSuffix">
+<code class="sig-prename descclassname">harvesttext.word_discoverer.</code><code class="sig-name descname">indexOfSortedSuffix</code><span class="sig-paren">(</span><em class="sig-param">doc</em>, <em class="sig-param">max_word_len</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext/word_discoverer.html#indexOfSortedSuffix"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.word_discoverer.indexOfSortedSuffix" title="永久链接至目标">¶</a></dt>
+<dd><p>Treat a suffix as an index where the suffix begins.
+Then sort these indexes by the suffixes.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-harvesttext">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-harvesttext" title="永久链接至标题">¶</a></h2>
+<dl class="function">
+<dt id="harvesttext.loadHT">
+<code class="sig-prename descclassname">harvesttext.</code><code class="sig-name descname">loadHT</code><span class="sig-paren">(</span><em class="sig-param">filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext.html#loadHT"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.loadHT" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="harvesttext.saveHT">
+<code class="sig-prename descclassname">harvesttext.</code><code class="sig-name descname">saveHT</code><span class="sig-paren">(</span><em class="sig-param">htModel</em>, <em class="sig-param">filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvesttext.html#saveHT"><span class="viewcode-link">[源代码]</span></a><a class="headerlink" href="#harvesttext.saveHT" title="永久链接至目标">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">目录</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">harvesttext package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-harvesttext.harvesttext">harvesttext.harvesttext module</a></li>
+<li><a class="reference internal" href="#module-harvesttext.match_patterns">harvesttext.match_patterns module</a></li>
+<li><a class="reference internal" href="#module-harvesttext.resources">harvesttext.resources module</a></li>
+<li><a class="reference internal" href="#module-harvesttext.sent_dict">harvesttext.sent_dict module</a></li>
+<li><a class="reference internal" href="#module-harvesttext.texttile">harvesttext.texttile module</a></li>
+<li><a class="reference internal" href="#module-harvesttext.utils">harvesttext.utils module</a></li>
+<li><a class="reference internal" href="#module-harvesttext.word_discoverer">harvesttext.word_discoverer module</a></li>
+<li><a class="reference internal" href="#module-harvesttext">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>本页</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/harvesttext.rst.txt"
+            rel="nofollow">显示源代码</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">快速搜索</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="转向" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>导航</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="总目录"
+             >索引</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python 模块索引"
+             >模块</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">HarvestText 0.6.1 文档</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; 版权所有 2020, blmoistawinde.
+      由 <a href="http://sphinx-doc.org/">Sphinx</a> 2.3.1 创建。
+    </div>
+  </body>
+</html>
