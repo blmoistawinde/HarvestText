@@ -19,6 +19,10 @@ HarvestText是一个专注无（弱）监督方法，能够整合领域知识（
 【注：本库仅完成实体分词和情感分析，可视化使用matplotlib】
 - [近代史纲要信息抽取及问答系统](https://blog.csdn.net/blmoistawinde/article/details/86557070)(命名实体识别，依存句法分析，简易问答系统)
 
+本README包含各个功能的典型例子，部分函数的详细用法可在文档中找到：
+
+[文档](https://harvesttext.readthedocs.io/en/latest/)
+
 具体功能如下：
 
 <a id="目录">目录:</a>
@@ -530,6 +534,7 @@ THUOCL是自然语言处理的一套中文词库，词表来自主流网站的�
 ### 新词发现
 
 从比较大量的文本中利用一些统计指标发现新词。（可选）通过提供一些种子词语来确定怎样程度质量的词语可以被发现。（即至少所有的种子词会被发现，在满足一定的基础要求的前提下。）
+
 ```python
 para = "上港的武磊和恒大的郜林，谁是中国最好的前锋？那当然是武磊武球王了，他是射手榜第一，原来是弱点的单刀也有了进步"
 #返回关于新词质量的一系列信息，允许手工改进筛选(pd.DataFrame型)
@@ -540,6 +545,10 @@ print(new_words)
 ```
 
 > ["武磊"]
+
+[根据反馈更新](https://github.com/blmoistawinde/HarvestText/issues/13#issue-551894838) 原本默认接受一个单独的字符串，现在也可以接受字符串列表输入，会自动进行拼接
+
+[根据反馈更新](https://github.com/blmoistawinde/HarvestText/issues/14#issuecomment-576081430) 现在默认按照词频降序排序，也可以传入`sort_by='score'`参数，按照综合质量评分排序。
 
 具体的方法和指标含义，参考：http://www.matrix67.com/blog/archives/5044
 

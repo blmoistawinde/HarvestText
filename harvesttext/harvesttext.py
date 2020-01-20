@@ -252,25 +252,31 @@ class HarvestText:
         return list(results)
 
     def set_linking_strategy(self, strategy, lastest_mention=None, entity_freq=None, type_freq=None):
-        """
-        为实体链接设定一些简单策略，目前可选的有：
-        'None','freq','latest','latest&freq'
-        'None': 默认选择候选实体字典序第一个
-        'freq': 对于单个字面值，选择其候选实体中之前出现最频繁的一个。
-                对于多个重叠字面值，选择其中候选实体出现最频繁的一个进行连接【每个字面值已经确定唯一映射】。
-        'latest': 对于单个字面值，如果在最近有可以确定的映射，就使用最近的映射。
-        'latest'- 对于职称等作为代称的情况可能会比较有用。
-        比如"经理"可能代指很多人，但是第一次提到的时候应该会包括姓氏。
-        我们就可以记忆这次信息，在后面用来消歧。
-        'freq' - 单字面值例：'市长'+{'A市长':5,'B市长':3} -> 'A市长'
-        重叠字面值例，'xx市长江yy'+{'xx市长':5,'长江yy':3}+{'市长':'xx市长'}+{'长江':'长江yy'} -> 'xx市长'
+        """为实体链接设定一些简单策略，目前可选的有：'None','freq','latest','latest&freq'
+
+            'None': 默认选择候选实体字典序第一个
+
+            'freq': 对于单个字面值，选择其候选实体中之前出现最频繁的一个。对于多个重叠字面值，选择其中候选实体出现最频繁的一个进行连接【每个字面值已经确定唯一映射】。
+
+            'latest': 对于单个字面值，如果在最近有可以确定的映射，就使用最近的映射。
+
+            'latest'- 对于职称等作为代称的情况可能会比较有用。
+
+            比如"经理"可能代指很多人，但是第一次提到的时候应该会包括姓氏。我们就可以记忆这次信息，在后面用来消歧。
+
+            'freq' - 单字面值例：'市长'+{'A市长':5,'B市长':3} -> 'A市长'
+
+            重叠字面值例，'xx市长江yy'+{'xx市长':5,'长江yy':3}+{'市长':'xx市长'}+{'长江':'长江yy'} -> 'xx市长'
+
         :param strategy: 可选 'None','freq','latest','latest&freq' 中的一个
         :param lastest_mention: dict,用于'latest',预设
         :param entity_freq: dict,用于'freq',预设某实体的优先级（词频）
         :param type_freq: dict,用于'freq',预设类别所有实体的优先级（词频）
+
         :return None
 
         """
+
         self.linking_strategy = strategy
         if "latest" in strategy:
             if lastest_mention:
@@ -320,8 +326,8 @@ class HarvestText:
         return linked_entity_type
 
     def mention2entity(self, mention):
-        '''
-        找到单个指称对应的实体
+        '''找到单个指称对应的实体
+
         :param mention:  指称
         :return: 如果存在对应实体，则返回（实体,类型），否则返回None, None
         '''
@@ -408,17 +414,19 @@ class HarvestText:
         return entities_info
 
     def entity_linking(self, sent, pinyin_recheck=False, char_recheck=False, keep_all=False, with_ch_pos=False):
-        """
+        '''
+
         :param sent: 句子/文本
         :param pinyin_recheck: do pinyin error check to cover more possible candidates
         :param char_recheck: do character error check to cover more possible candidates
         :param keep_all: if True, keep all the possibilities of linked entities
         :param with_ch_pos: if True, also returns ch_pos
         :return: entities_info：依存弧,列表中的列表。
-        if not keep_all: [([l, r], (entity, type)) for each linked mention m]
-        else: [( [l, r], set((entity, type) for each possible entity of m) ) for each linked mention m]
-        ch_pos: 每个字符对应词语的词性标注（不考虑登录的实体，可用来过滤实体，比如去掉都由名词组成的实体，有可能是错误链接）
-        """
+            if not keep_all: [([l, r], (entity, type)) for each linked mention m]
+            else: [( [l, r], set((entity, type) for each possible entity of m) ) for each linked mention m]
+            ch_pos: 每个字符对应词语的词性标注（不考虑登录的实体，可用来过滤实体，比如去掉都由名词组成的实体，有可能是错误链接）
+
+        '''
         self.check_prepared()
         entities_info = self._entity_linking(sent, pinyin_recheck, char_recheck, keep_all)
         if (not keep_all) and (pinyin_recheck or char_recheck):
@@ -510,14 +518,14 @@ class HarvestText:
             return result
 
     def cut_sentences(self, para, drop_empty_line=True, strip=True, deduplicate=False):
-        """
+        '''cut_sentences
 
         :param para: 输入文本
         :param drop_empty_line: 是否丢弃空行
         :param strip: 是否对每一句话做一次strip
         :param deduplicate: 是否对连续标点去重，帮助对连续标点结尾的句子分句
         :return: sentences: list of str
-        """
+        '''
         if deduplicate:
             para = re.sub(r"([。！？\!\?])\1+", r"\1", para)
         para = re.sub('([。！？\?!])([^”’])', r"\1\n\2", para)  # 单字符断句符
@@ -536,7 +544,7 @@ class HarvestText:
 
     def cut_paragraphs(self, text, num_paras=None, block_sents=3, std_weight=0.5,
                        align_boundary=True, use_stopwords=True, remove_puncts=True):
-        """
+        '''
 
         :param text:
         :param num_paras: (默认为None)可以手动设置想要划分的段落数，也可以保留默认值None，让算法自动确定
@@ -546,7 +554,7 @@ class HarvestText:
         :param use_stopwords: （默认为True）是否在算法中引入停用词，一般能够提升准确度
         :param remove_puncts: （默认为True）是否在算法中去除标点符号，一般能够提升准确度
         :return:
-        """
+        '''
         if num_paras is not None:
             assert num_paras > 0, "Should give a positive number of num_paras"
         stopwords = get_baidu_stopwords() if use_stopwords else set()
@@ -584,22 +592,23 @@ class HarvestText:
     def clean_text(self, text, remove_url=True, email=True, weibo_at=True, stop_terms=("转发微博",),
                    emoji=True, weibo_topic=False, deduplicate_space=True,
                    norm_url=False, norm_html=False, to_url=False, remove_puncts=False):
-        """
+        '''
         进行各种文本清洗操作，微博中的特殊格式，网址，email，等等
+
         :param text: 输入文本
         :param remove_url: （默认使用）是否去除网址
         :param email: （默认使用）是否去除email
-        :param weibo_at: （默认使用）是否去除微博的@相关文本
+        :param weibo_at: （默认使用）是否去除微博的\@相关文本
         :param stop_terms: 去除文本中的一些特定词语，默认参数为("转发微博",)
-        :param emoji: （默认使用）去除[]包围的文本，一般是表情符号
+        :param emoji: （默认使用）去除\[\]包围的文本，一般是表情符号
         :param weibo_topic: （默认不使用）去除##包围的文本，一般是微博话题
-        :param deduplicate_space:（默认使用）合并文本中间的多个空格为一个
+        :param deduplicate_space: （默认使用）合并文本中间的多个空格为一个
         :param norm_url: （默认不使用）还原URL中的特殊字符为普通格式，如(%20转为空格)
-        :param norm_html: （默认不使用）还原HTML中的特殊字符为普通格式，如(&nbsp;转为空格)
+        :param norm_html: （默认不使用）还原HTML中的特殊字符为普通格式，如(\&nbsp;转为空格)
         :param to_url: （默认不使用）将普通格式的字符转为还原URL中的特殊字符，用于请求，如(空格转为%20)
         :param remove_puncts: （默认不使用）移除所有标点符号
         :return: 清洗后的文本
-        """
+        '''
         # 反向的矛盾设置
         if norm_url and to_url:
             raise Exception("norm_url和to_url是矛盾的设置")
@@ -638,12 +647,12 @@ class HarvestText:
         return text.strip()
 
     def named_entity_recognition(self, sent, standard_name=False):
-        """
-        利用pyhanlp的命名实体识别，找到句子中的（人名，地名，机构名）三种实体。harvesttext会预先链接已知实体
+        '''利用pyhanlp的命名实体识别，找到句子中的（人名，地名，机构名）三种实体。harvesttext会预先链接已知实体
+
         :param sent:
         :param standard_name:
         :return: 发现的命名实体信息，字典 {实体名: 实体类型}
-        """
+        '''
         from pyhanlp import HanLP, JClass
         if not self.hanlp_prepared:
             self.hanlp_prepare()
@@ -669,15 +678,14 @@ class HarvestText:
             pass
         return entity_type_dict
     def dependency_parse(self, sent, standard_name=False, stopwords=None):
-        """
-        依存句法分析，调用pyhanlp的接口，并且融入了harvesttext的实体识别机制。
-        不保证高准确率。
+        '''依存句法分析，调用pyhanlp的接口，并且融入了harvesttext的实体识别机制。不保证高准确率。
+
         :param sent:
         :param standard_name:
         :param stopwords:
         :return: arcs：依存弧,列表中的列表。
-        [[词语id,词语字面值或实体名(standard_name控制),词性，依存关系，依存子词语id] for 每个词语]
-        """
+            [[词语id,词语字面值或实体名(standard_name控制),词性，依存关系，依存子词语id] for 每个词语]
+        '''
         from pyhanlp import HanLP, JClass
         if not self.hanlp_prepared:
             self.hanlp_prepare()
@@ -704,16 +712,16 @@ class HarvestText:
         return arcs
 
     def triple_extraction(self, sent, standard_name=False, stopwords=None, expand = "all"):
-        """
-        利用主谓宾等依存句法关系，找到句子中有意义的三元组。
+        '''利用主谓宾等依存句法关系，找到句子中有意义的三元组。
         很多代码参考：https://github.com/liuhuanyong/EventTriplesExtraction
         不保证高准确率。
+
         :param sent:
         :param standard_name:
         :param stopwords:
         :param expand: 默认"all"：扩展所有主谓词，"exclude_entity"：不扩展已知实体，可以保留标准的实体名，用于链接。"None":不扩展
         :return:
-        """
+        '''
         arcs = self.dependency_parse(sent, standard_name, stopwords)
 
         '''对找出的主语或者宾语进行扩展'''
@@ -789,16 +797,31 @@ class HarvestText:
     def word_discover(self, doc, threshold_seeds=[], auto_param=True,
                       excluding_types=[], excluding_words=[],  # 可以排除已经登录的某些种类的实体，或者某些指定词
                       max_word_len=5, min_freq=0.00005, min_entropy=1.4, min_aggregation=50,
-                      ent_threshold="both", mem_saving=0):
+                      ent_threshold="both", mem_saving=None, sort_by='freq'):
+        '''新词发现
+
+        :param doc: (string or list) 待进行新词发现的语料，如果是列表的话，就会自动用换行符拼接
+        :param threshold_seeds: list of string, 设定能接受的“质量”最差的种子词，更差的词语将会在新词发现中被过滤
+        :param auto_param: bool, 使用默认的算法参数
+        :param excluding_types: list of str, 设定要过滤掉的特定词性或已经登录到ht的实体类别
+        :param excluding_words: list of str, 设定要过滤掉的特定词
+        :param mem_saving: bool or None, 采用一些过滤手段来减少内存使用，但可能影响速度。如果不指定，对长文本自动打开，而对短文本不使用
+        :param sort_by: 以下string之一: {'freq': 词频, 'score': 综合分数, 'agg':凝聚度} 按照特定指标对得到的词语信息排序，默认使用词频
+        :return: info: 包含新词作为index, 以及对应各项指标的DataFrame
+        '''
+        if type(doc) != str:
+            doc = "\n".join(doc)
         # 采用经验参数，此时后面的参数设置都无效
         if auto_param:  # 根据自己的几个实验确定的参数估计值，没什么科学性，但是应该能得到还行的结果
             length = len(doc)
             min_entropy = np.log(length) / 10
             min_freq = min(0.00005, 20.0 / length)
             min_aggregation = np.sqrt(length) / 15
-            mem_saving = int(length > 300000)
+            mem_saving = bool(length > 300000) if mem_saving is None else mem_saving
             # ent_threshold: 确定左右熵的阈值对双侧都要求"both"，或者只要左右平均值达到"avg"
             # 对于每句话都很极短的情况（如长度<8），经常出现在左右边界的词语可能难以被确定，这时ent_threshold建议设为"avg"
+        mem_saving = False if mem_saving is None else mem_saving
+
         try:
             ws = WordDiscoverer(doc, max_word_len, min_freq, min_entropy, min_aggregation, ent_threshold, mem_saving)
         except Exception as e:
@@ -832,6 +855,9 @@ class HarvestText:
             else:
                 min_score *= 0.9  # 留一些宽松的区间
                 info = info[info["score"] > min_score]
+        if sort_by:
+            info.sort_values(by=sort_by, ascending=False, inplace=True)
+
         return info
 
     def add_new_words(self, new_words):
@@ -870,12 +896,12 @@ class HarvestText:
         self.check_prepared()
 
     def find_entity_with_rule(self, text, rulesets=[], add_to_dict=True, type0="添加词"):
-        '''
-        利用规则从分词结果中的词语找到实体，并可以赋予相应的类型再加入实体库
+        '''利用规则从分词结果中的词语找到实体，并可以赋予相应的类型再加入实体库
+
         :param text: string, 一段文本
         :param rulesets: list of (tuple of rules or single rule) from match_patterns,
-        list中包含多个规则，满足其中一种规则的词就认为属于这个type
-        而每种规则由tuple或单个条件(pattern)表示，一个词必须满足其中的一个或多个条件。
+            list中包含多个规则，满足其中一种规则的词就认为属于这个type
+            而每种规则由tuple或单个条件(pattern)表示，一个词必须满足其中的一个或多个条件。
         :param add_to_dict: 是否把找到的结果直接加入词典
         :param type0: 赋予满足条件的词语的实体类型, 仅当add_to_dict时才有意义
         :return: found_entities
@@ -908,14 +934,14 @@ class HarvestText:
     #
     def build_sent_dict(self, sents, method="PMI", min_times=5, scale="None",
                         pos_seeds=None, neg_seeds=None, stopwords=None):
-        '''
-        利用种子词，构建情感词典
+        '''利用种子词，构建情感词典
+
         :param sents: list of string, 文本列表
         :param method: "PMI", 使用的算法，目前仅支持PMI
         :param min_times: int, 默认为5， 在所有句子中出现次数少于这个次数的词语将被过滤
         :param scale: {"None","0-1","+-1"}, 默认为"None"，否则将对情感值进行变换
-        若为"0-1"，按照最大为1，最小为0进行线性伸缩，0.5未必是中性
-        若为"+-1", 在正负区间内分别伸缩，保留0作为中性的语义
+            若为"0-1"，按照最大为1，最小为0进行线性伸缩，0.5未必是中性
+            若为"+-1", 在正负区间内分别伸缩，保留0作为中性的语义
         :param pos_seeds: list of string, 积极种子词，如不填写将默认采用清华情感词典
         :param neg_seeds: list of string, 消极种子词，如不填写将默认采用清华情感词典
         :param stopwords: list of string, stopwords词，如不填写将不使用
@@ -975,8 +1001,8 @@ class HarvestText:
     #
     def get_summary(self, docs, topK=5, stopwords=None, with_importance=False, standard_name=True,
                     maxlen=None, avoid_repeat=False):
-        """
-        使用Textrank算法得到文本中的关键句
+        '''使用Textrank算法得到文本中的关键句
+
         :param docs: str句子列表
         :param topK: 选取几个句子, 如果设置了maxlen，则优先考虑长度
         :param stopwords: 在算法中采用的停用词
@@ -985,7 +1011,7 @@ class HarvestText:
         :param maxlen: 设置得到的摘要最长不超过多少字数，如果已经达到长度限制但未达到topK句也会停止
         :param avoid_repeat: 使用MMR principle惩罚与已经抽取的摘要重复的句子，避免重复
         :return: 句子列表，或者with_importance=True时，（句子，分数）列表
-        """
+        '''
         assert topK > 0
         import networkx as nx
         maxlen = float('inf') if maxlen is None else maxlen
@@ -1071,9 +1097,9 @@ class HarvestText:
         return G
 
     def build_word_ego_graph(self, docs, word, standard_name=True, min_freq=0, other_min_freq=-1, stopwords=None):
-        '''
-        根据文本和指定限定词，获得以限定词为中心的各词语的关系。
+        '''根据文本和指定限定词，获得以限定词为中心的各词语的关系。
         限定词可以是一个特定的方面（衣食住行这类文档），这样就可以从词语中心图中获得关于这个方面的简要信息
+
         :param docs: 文本的列表
         :param word: 限定词
         :param standard_name: 把所有实体的指称化为标准实体名
@@ -1113,8 +1139,7 @@ class HarvestText:
         return G
 
     def build_entity_ego_graph(self, docs, word, min_freq=0, other_min_freq=-1, inv_index={}, used_types=[]):
-        '''
-        Entity only version of build_word_ego_graph()
+        '''Entity only version of build_word_ego_graph()
         '''
         import networkx as nx
         G = nx.Graph()

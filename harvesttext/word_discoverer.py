@@ -28,7 +28,7 @@ def genSubparts(string):
 
 def entropyOfList(cnt_dict):
     length = sum(v for v in cnt_dict.values())
-    return sum([-v/length*math.log(v/length) for v in cnt_dict.values()])
+    return sum(-v/length*math.log(v/length) for v in cnt_dict.values())
 
 def indexOfSortedSuffix(doc, max_word_len):
     """
@@ -37,8 +37,8 @@ def indexOfSortedSuffix(doc, max_word_len):
     """
     indexes = []
     length = len(doc)
-    indexes = [(i,j) for i in range(0, length)
-               for j in range(i + 1, min(i + 1 + max_word_len, length + 1))]
+    indexes = ((i,j) for i in range(0, length)
+               for j in range(i + 1, min(i + 1 + max_word_len, length + 1)))
     return sorted(indexes, key=lambda i_j: doc[i_j[0]:i_j[1]])
 
 
@@ -80,20 +80,20 @@ class WordInfo(object):
         """
         parts = genSubparts(self.text)
         if len(parts) > 0:
-            self.aggregation = min([self.freq/words_dict[p1_p2[0]].freq/words_dict[p1_p2[1]].freq for p1_p2 in parts])
+            self.aggregation = min(self.freq/words_dict[p1_p2[0]].freq/words_dict[p1_p2[1]].freq for p1_p2 in parts)
 
 
 
 class WordDiscoverer(object):
     def __init__(self, doc, max_word_len=5, min_freq=0.00005, min_entropy=2.0, min_aggregation=50,
-                 ent_threshold="both",mem_saving=0):
+                 ent_threshold="both", mem_saving=False):
         super(WordDiscoverer, self).__init__()
         self.max_word_len = max_word_len
         self.min_freq = min_freq
         self.min_entropy = min_entropy
         self.min_aggregation = min_aggregation
         
-        if mem_saving == 0:
+        if mem_saving:
             self.word_infos = self.genWords(doc)
             # Filter out the results satisfy all the requirements
             if ent_threshold == "both":
@@ -158,7 +158,7 @@ class WordDiscoverer(object):
         for v in values:
             if len(v.text) == 1: continue
             v.computeAggregation(word_cands)
-        return sorted(values, key=lambda v: v.freq, reverse=True)
+        return values
 
     def genWords2(self, doc):
         """
