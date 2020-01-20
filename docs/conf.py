@@ -26,7 +26,7 @@ release = '0.6.1'
 
 github_doc_root = 'https://github.com/blmoistawinde/HarvestText/tree/master/doc'
 
-
+master_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
 
