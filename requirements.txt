@@ -1,5 +1,6 @@
 jieba
 numpy
+scipy
 pandas
 networkx
 pypinyin
