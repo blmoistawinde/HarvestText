@@ -1,0 +1,8 @@
+jieba
+numpy
+pandas
+networkx
+pypinyin
+pyhanlp
+rdflib
+pyxDamerauLevenshtein==1.5

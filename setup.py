@@ -23,16 +23,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Topic :: Text Processing',
       ],
-    install_requires=[
-        "jieba",
-        "numpy",
-        "pandas",
-        "networkx",
-        "pypinyin",
-        "pyhanlp",
-        "rdflib",
-        "pyxDamerauLevenshtein==1.5"
-    ],
+    install_requires=open("requirements.txt", encoding='utf-8').read().split('\n'),
     tests_require=['pytest'],
     include_package_data = True,
     package_data ={"harvesttext":["resources/*"],}
