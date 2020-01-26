@@ -285,13 +285,13 @@ def test_entity_error_check():
     ht0.add_typed_words(typed_words)
     sent1 = "武磊和吴力只差一个拼音"
     print(sent1)
-    print(ht0.entity_linking(sent1, pinyin_recheck=True))
+    print(ht0.entity_linking(sent1, pinyin_tolerance=1))
     sent2 = "武磊和吴磊只差一个字"
     print(sent2)
-    print(ht0.entity_linking(sent2, char_recheck=True))
+    print(ht0.entity_linking(sent2, char_tolerance=1))
     sent3 = "吴磊和吴力都可能是武磊的代称"
     print(sent3)
-    print(ht0.get_linking_mention_candidates(sent3, pinyin_recheck=True, char_recheck=True))
+    print(ht0.get_linking_mention_candidates(sent3, pinyin_tolerance=1, char_tolerance=1))
 
     sys.stdout.close()
     assert open(get_current_function_name() + "_current").read() == expected

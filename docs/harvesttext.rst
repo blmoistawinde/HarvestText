@@ -4,6 +4,14 @@ harvesttext package
 Submodules
 ----------
 
+harvesttext.entity\_discoverer module
+-------------------------------------
+
+.. automodule:: harvesttext.entity_discoverer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 harvesttext.harvesttext module
 ------------------------------
 

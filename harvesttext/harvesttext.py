@@ -15,9 +15,12 @@ from .word_discoverer import WordDiscoverer
 from .sent_dict import SentDict
 from .resources import get_qh_sent_dict, get_baidu_stopwords
 from .texttile import TextTile
+from .entity_discoverer import NFLEntityDiscoverer, NERPEntityDiscover
 from .utils import sent_sim_textrank, sent_sim_cos
+import w3lib.html
 import logging
 import warnings
+from tqdm import tqdm
 from pypinyin import lazy_pinyin, pinyin
 
 
@@ -101,7 +104,21 @@ class HarvestText:
                         trie_node["leaf"].remove((entity0, type0))
                         break
 
-    def add_entities(self, entity_mention_dict=None, entity_type_dict=None):
+    def add_entities(self, entity_mention_dict=None, entity_type_dict=None, override=False, load_path=None):
+        '''登录的实体信息到ht，或者从save_entities保存的文件中读取（如果指定了load_path）
+
+        :param entity_mention_dict: dict, {entity:[mentions]}格式，
+        :param entity_type_dict: dict, {entity:entity_type}格式，
+        :param override: bool, 是否覆盖已登录实体，默认False
+        :param load_path: str, 要读取的文件路径（默认不使用）
+        :return: None
+        '''
+        if load_path:
+            self.load_entities(load_path, override)
+
+        if override:
+            self.clear()
+
         if entity_mention_dict is None and entity_type_dict is None:
             return
 
@@ -122,8 +139,8 @@ class HarvestText:
 
 
         if entity_type_dict is None:
-            entity_type_dict = {entity: "添加词" for entity in entity_mention_dict}
-        if len(entity_type_dict) == 0:
+            entity_type_dict = {entity: "添加词" for entity in self.entity_mention_dict}
+        if len(self.entity_type_dict) == 0:
             self.entity_type_dict = entity_type_dict
         else:
             for entity, type0 in entity_type_dict.items():
@@ -131,6 +148,12 @@ class HarvestText:
                     # 不允许同一实体有不同类型
                     warnings.warn("You've added an entity twice with different types, the later type will be used.")
                 self.entity_type_dict[entity] = type0
+
+        # 两个dict不对齐的情况下，以添加词作为默认词性
+        for entity in self.entity_mention_dict:
+            if entity not in self.entity_type_dict:
+                self.entity_type_dict[entity] = "添加词"
+
 
         type_entity_mention_dict = defaultdict(dict)
         for entity0, type0 in self.entity_type_dict.items():
@@ -339,13 +362,15 @@ class HarvestText:
                 return entity0, type0
         return None, None
 
-    def get_pinyin_correct_candidates(self, word):  # 默认最多容忍一个拼音的变化
+    def get_pinyin_correct_candidates(self, word, tolerance=1):  # 默认最多容忍一个拼音的变化
+        assert tolerance in [0, 1]
         pinyins = lazy_pinyin(word)
         tmp = pinyins[:]
         pinyin_cands = {tuple(pinyins)}
-        for i, pinyin in enumerate(pinyins):
-            if pinyin in self.pinyin_adjlist:
-                pinyin_cands |= {tuple(tmp[:i] + [neibr] + tmp[i + 1:]) for neibr in self.pinyin_adjlist[pinyin]}
+        if tolerance == 1:
+            for i, pinyin in enumerate(pinyins):
+                if pinyin in self.pinyin_adjlist:
+                    pinyin_cands |= {tuple(tmp[:i] + [neibr] + tmp[i + 1:]) for neibr in self.pinyin_adjlist[pinyin]}
         pinyin_cands = pinyin_cands & set(self.pinyin_mention_dict.keys())
         mention_cands = set()
         for pinyin in pinyin_cands:
@@ -358,16 +383,16 @@ class HarvestText:
         self._link_record(surface0, entity0)
         return entity0, type0
 
-    def _entity_recheck(self, sent, entities_info, pinyin_recheck, char_recheck):
+    def _entity_recheck(self, sent, entities_info, pinyin_tolerance, char_tolerance):
         sent2 = self.decoref(sent, entities_info)
         for word, flag in pseg.cut(sent2):
             if flag.startswith("n"):  # 对于名词，再检查是否有误差范围内匹配的其他指称
                 entity0, type0 = None, None
                 mention_cands = []
-                if pinyin_recheck:
-                    mention_cands += self.get_pinyin_correct_candidates(word)
-                if char_recheck:
-                    mention_cands += self.search_word_trie(word)
+                if pinyin_tolerance is not None:
+                    mention_cands += self.get_pinyin_correct_candidates(word, pinyin_tolerance)
+                if char_tolerance is not None:
+                    mention_cands += self.search_word_trie(word, char_tolerance)
 
                 if len(mention_cands) > 0:
                     entity0, type0 = self.choose_from_multi_mentions(mention_cands, sent)
@@ -375,7 +400,7 @@ class HarvestText:
                     l = sent.find(word)
                     entities_info.append([(l,l+len(word)),(entity0, type0)])
 
-    def _entity_linking(self, sent, pinyin_recheck=False, char_recheck=False, keep_all=False):
+    def _entity_linking(self, sent, pinyin_tolerance=None, char_tolerance=None, keep_all=False):
         entities_info = []
         l = 0
         while l < len(sent):
@@ -413,12 +438,12 @@ class HarvestText:
                 l += 1
         return entities_info
 
-    def entity_linking(self, sent, pinyin_recheck=False, char_recheck=False, keep_all=False, with_ch_pos=False):
+    def entity_linking(self, sent, pinyin_tolerance=None, char_tolerance=None, keep_all=False, with_ch_pos=False):
         '''
 
         :param sent: 句子/文本
-        :param pinyin_recheck: do pinyin error check to cover more possible candidates
-        :param char_recheck: do character error check to cover more possible candidates
+        :param pinyin_tolerance: {None, 0, 1} 搜索拼音相同(取0时)或者差别只有一个(取1时)的候选词链接到现有实体，默认不使用(None)
+        :param char_tolerance: {None, 1} 搜索字符只差1个的候选词(取1时)链接到现有实体，默认不使用(None)
         :param keep_all: if True, keep all the possibilities of linked entities
         :param with_ch_pos: if True, also returns ch_pos
         :return: entities_info：依存弧,列表中的列表。
@@ -428,9 +453,9 @@ class HarvestText:
 
         '''
         self.check_prepared()
-        entities_info = self._entity_linking(sent, pinyin_recheck, char_recheck, keep_all)
-        if (not keep_all) and (pinyin_recheck or char_recheck):
-            self._entity_recheck(sent, entities_info, pinyin_recheck, char_recheck)
+        entities_info = self._entity_linking(sent, pinyin_tolerance, char_tolerance, keep_all)
+        if (not keep_all) and (pinyin_tolerance is not None or char_tolerance is not None):
+            self._entity_recheck(sent, entities_info, pinyin_tolerance, char_tolerance)
         if with_ch_pos:
             ch_pos = []
             for word, pos in pseg.cut(sent):
@@ -439,11 +464,11 @@ class HarvestText:
         else:
             return entities_info
 
-    def get_linking_mention_candidates(self, sent, pinyin_recheck=False, char_recheck=False):
+    def get_linking_mention_candidates(self, sent, pinyin_tolerance=None, char_tolerance=None):
         mention_cands = defaultdict(list)
         cut_result = []
         self.check_prepared()
-        entities_info = self._entity_linking(sent, pinyin_recheck, char_recheck)
+        entities_info = self._entity_linking(sent, pinyin_tolerance, char_tolerance)
         sent2 = self.decoref(sent, entities_info)
         l = 0
         i = 0
@@ -454,9 +479,9 @@ class HarvestText:
             cut_result.append(word)
             if flag.startswith("n"):  # 对于名词，再检查是否有误差范围内匹配的其他指称
                 cands = []
-                if pinyin_recheck:
+                if pinyin_tolerance:
                     cands += self.get_pinyin_correct_candidates(word)
-                if char_recheck:
+                if char_tolerance:
                     cands += self.search_word_trie(word)
                 if len(cands) > 0:
                     mention_cands[(l, l + len(word))] = set(cands)
@@ -516,6 +541,153 @@ class HarvestText:
             return " ".join(result)
         else:
             return result
+    def save_entity_info(self, save_path='./ht_entities.txt', entity_mention_dict=None, entity_type_dict=None):
+        '''保存ht已经登录的实体信息，或者外部提供的相同格式的信息，目前保存的信息包括entity,mention,type.
+
+        如果不提供两个dict参数，则默认使用模型自身已登录信息，否则使用提供的对应dict
+
+        格式：
+
+
+            entity||类别 mention||类别 mention||类别
+
+            entity||类别 mention||类别
+
+        每行第一个是实体名，其后都是对应的mention名，用一个空格分隔，每个名称后面都对应了其类别。
+
+        保存这个信息的目的是为了便于手动编辑和导入:
+
+        - 比如将某个mention作为独立的新entity，只需剪切到某一行的开头，并再复制一份再后面作为mention
+
+        :param save_path: str, 要保存的文件路径（默认: ./ht_entities.txt）
+        :param entity_mention_dict: dict, {entity:[mentions]}格式，
+        :param entity_type_dict: dict, {entity:entity_type}格式，
+        :return: None
+        '''
+        if entity_mention_dict is None and entity_type_dict is None:
+            entity_mention_dict = self.entity_mention_dict
+            entity_type_dict = self.entity_type_dict
+        else:
+            if entity_mention_dict is None:  # 用实体名直接作为默认指称
+                entity_mention_dict = dict(
+                    (entity0, {entity0}) for entity0 in entity_type_dict)
+            else:
+                entity_mention_dict = dict(
+                    (entity0, set(mentions0)) for (entity0, mentions0) in entity_mention_dict.items())
+
+            if entity_type_dict is None:
+                entity_type_dict = {entity: "添加词" for entity in entity_mention_dict}
+
+        # 两个dict不对齐的情况下，以添加词作为默认词性
+        for entity in entity_mention_dict:
+            if entity not in entity_type_dict:
+                entity_type_dict[entity] = "添加词"
+
+        if entity_mention_dict is None or entity_type_dict is None:
+            return
+
+        out_lines = []
+        for entity, mentions0 in entity_mention_dict.items():
+            etype = entity_type_dict[entity]
+            enames = [entity] + list(mentions0)
+            out_lines.append(" ".join("%s||%s" % (ename, etype) for ename in enames))
+
+        dir0 = os.path.dirname(save_path)
+        os.makedirs(dir0, exist_ok=True)
+        with open(save_path, "w", encoding='utf-8') as f:
+            f.write("\n".join(out_lines))
+
+    def load_entities(self, load_path='./ht_entities.txt', override=True):
+        """从save_entities保存的文件读取实体信息
+
+        :param load_path: str, 读取路径（默认：./ht_entities.txt）
+        :param override: bool, 是否重写已登录实体，默认True
+        :return: None, 实体已登录到ht中
+        """
+        # should have been inited at __init__(), but can override
+        if override:
+            self.clear()
+        with open(load_path, encoding='utf-8') as f:
+            for line in f:
+                enames = line.strip().split()
+                entity, etype = enames[0].split("||")
+                mentions = set(x.split("||")[0] for x in enames[1:])
+                self.entity_type_dict[entity] = etype
+                self.entity_mention_dict[entity] = mentions
+
+        type_entity_mention_dict = defaultdict(dict)
+        for entity0, type0 in self.entity_type_dict.items():
+            if entity0 in self.entity_mention_dict:
+                type_entity_mention_dict[type0][entity0] = self.entity_mention_dict[entity0]
+        self.type_entity_mention_dict = type_entity_mention_dict
+        self._add_entities(type_entity_mention_dict)
+
+    def entity_discover(self, text, method="NFL", min_count=5, pinyin_tolerance=0, **kwargs):
+        """无监督地从较大量文本中发现实体的类别和多个同义mention。建议对千句以上的文本来挖掘，并且文本的主题比较集中。
+            效率：在测试环境下处理一个约10000句的时间大约是20秒。另一个约200000句的语料耗时2分半
+            精度：算法准确率不高，但是可以初步聚类，建议先save_entities后, 再进行手动进行调整，然后load_entities再用于进一步挖掘
+
+            ref paper: Mining Entity Synonyms with Efficient Neural Set Generation(https://arxiv.org/abs/1811.07032v1)
+
+        :param text: string or list of string
+        :param method: 使用的算法， 目前可选 "NFL" (NER+Fasttext+Louvain+模式修复，基于语义和规则发现同义实体，但可能聚集过多错误实体), "NERP"(NER+模式修复, 仅基于规则发现同义实体)
+        :param min_count: (default 5) mininum freq of word to be included
+        :param pinyin_tolerance: {None, 0, 1} 合并拼音相同(取0时)或者差别只有一个(取1时)的候选词到同一组实体，默认使用(0)
+        :param kwargs: 根据算法决定的参数，目前, "NERP"不需要额外参数，而"NFL"可接受的额外参数有：
+
+            emb_dim: (default 50) fasttext embedding's dimensions
+
+            threshold: (default 0.98) [比较敏感，调参重点]larger for more entities, threshold for add an edge between 2 entities if cos_dim exceeds
+
+            ft_iters: (default 20) larger for more entities, num of iterations used by fasttext
+
+            use_subword: (default True) whether to use fasttext's subword info
+
+            min_n: (default 1) min length of used subword
+
+            max_n: (default 4) max length of used subword
+
+        :return: entity_mention_dict, entity_type_dict
+        """
+        text = text if type(text) == str else "\n".join(text)
+        method = method.upper()
+        assert method in {"NFL", "NERP"}
+        # discover candidates with NER
+        print("Doing NER")
+        sent_words = []
+        type_entity_dict = defaultdict(set)
+        entity_count = defaultdict(int)
+        wd_count = defaultdict(int)
+        for sent in tqdm(self.cut_sentences(text)):
+            NERs0, possegs = self.named_entity_recognition(sent, return_posseg=True)
+            sent_wds0 = []
+            for wd, pos in possegs:
+                if wd in NERs0:
+                    zh_pos = NERs0[wd]
+                    entity_name = wd.lower() + "_" + zh_pos
+                    type_entity_dict[zh_pos].add(entity_name)
+                    sent_wds0.append(entity_name)
+                    entity_count[entity_name] += 1
+                else:
+                    sent_wds0.append(wd)
+                    wd_count[wd] += 1
+            sent_words.append(sent_wds0)
+
+        entity_count = pd.Series(entity_count)
+        entity_count = entity_count[entity_count >= min_count]
+        pop_words = {wd for wd, cnt in wd_count.items() if cnt >= min_count}
+        id2word = entity_count.index.tolist()
+        word2id = {wd: i for (i, wd) in enumerate(id2word)}
+
+        type_entity_dict2 = {k: list(v) for k, v in type_entity_dict.items()}
+        if method == "NFL":
+            discoverer = NFLEntityDiscoverer(sent_words, type_entity_dict2, entity_count, pop_words, word2id, id2word,
+                                             min_count, pinyin_tolerance, self.pinyin_adjlist, **kwargs)
+        elif method == "NERP":
+            discoverer = NERPEntityDiscover(sent_words, type_entity_dict2, entity_count, pop_words, word2id, id2word,
+                                            min_count, pinyin_tolerance, self.pinyin_adjlist, **kwargs)
+        entity_mention_dict, entity_type_dict = discoverer.entity_mention_dict, discoverer.entity_type_dict
+        return entity_mention_dict, entity_type_dict
 
     def cut_sentences(self, para, drop_empty_line=True, strip=True, deduplicate=False):
         '''cut_sentences
@@ -591,9 +763,9 @@ class HarvestText:
 
     def clean_text(self, text, remove_url=True, email=True, weibo_at=True, stop_terms=("转发微博",),
                    emoji=True, weibo_topic=False, deduplicate_space=True,
-                   norm_url=False, norm_html=False, to_url=False, remove_puncts=False):
+                   norm_url=False, norm_html=False, to_url=False, remove_puncts=False, remove_tags=True):
         '''
-        进行各种文本清洗操作，微博中的特殊格式，网址，email，等等
+        进行各种文本清洗操作，微博中的特殊格式，网址，email，html代码，等等
 
         :param text: 输入文本
         :param remove_url: （默认使用）是否去除网址
@@ -607,6 +779,7 @@ class HarvestText:
         :param norm_html: （默认不使用）还原HTML中的特殊字符为普通格式，如(\&nbsp;转为空格)
         :param to_url: （默认不使用）将普通格式的字符转为还原URL中的特殊字符，用于请求，如(空格转为%20)
         :param remove_puncts: （默认不使用）移除所有标点符号
+        :param remove_tags: （默认使用）移除所有html块
         :return: 清洗后的文本
         '''
         # 反向的矛盾设置
@@ -616,6 +789,8 @@ class HarvestText:
             text = html.unescape(text)
         if to_url:
             text = urllib.parse.quote(text)
+        if remove_tags:
+            text = w3lib.html.remove_tags(text)
         if remove_url:
             URL_REGEX = re.compile(
                 r'(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:\'".,<>?«»“”‘’]))',
@@ -627,7 +802,7 @@ class HarvestText:
             EMAIL_REGEX = re.compile(r"[-a-z0-9_.]+@(?:[-a-z0-9]+\.)+[a-z]{2,6}", re.IGNORECASE)
             text = re.sub(EMAIL_REGEX, "", text)
         if weibo_at:
-            text = re.sub(r"(回复)?(//)?\s*@\S*?\s*(:| |$)", " ", text)  # 去除正文中的@和回复/转发中的用户名
+            text = re.sub(r"(回复)?(//)?\s*@\S*?\s*(:|：| |$)", " ", text)  # 去除正文中的@和回复/转发中的用户名
         if emoji:
             text = re.sub(r"\[\S+\]", "", text)  # 去除表情符号
         if weibo_topic:
@@ -644,14 +819,18 @@ class HarvestText:
             allpuncs = re.compile(
                 r"[，\_《。》、？；：‘’＂“”【「】」、·！@￥…（）—\,\<\.\>\/\?\;\:\'\"\[\]\{\}\~\`\!\@\#\$\%\^\&\*\(\)\-\=\+]")
             text = re.sub(allpuncs, "", text)
+
         return text.strip()
 
-    def named_entity_recognition(self, sent, standard_name=False):
-        '''利用pyhanlp的命名实体识别，找到句子中的（人名，地名，机构名）三种实体。harvesttext会预先链接已知实体
+    def named_entity_recognition(self, sent, standard_name=False, return_posseg=False):
+        '''利用pyhanlp的命名实体识别，找到句子中的（人名，地名，机构名，其他专名）实体。harvesttext会预先链接已知实体
 
-        :param sent:
-        :param standard_name:
-        :return: 发现的命名实体信息，字典 {实体名: 实体类型}
+        :param sent: string, 文本
+        :param standard_name: bool, 是否把连接到的已登录转化为标准名
+        :param return_posseg: bool, 是否返回包括命名实体识别的，带词性分词结果
+        :param book: bool, 预先识别
+        :return: entity_type_dict: 发现的命名实体信息，字典 {实体名: 实体类型}
+            (return_posseg=True时) possegs: list of (单词, 词性)
         '''
         from pyhanlp import HanLP, JClass
         if not self.hanlp_prepared:
@@ -663,6 +842,7 @@ class HarvestText:
         StandardTokenizer.SEGMENT.enableAllNamedEntityRecognize(True)
         entity_type_dict = {}
         try:
+            possegs = []
             for x in StandardTokenizer.segment(sent2):
                 # 三种前缀代表：人名（nr），地名（ns），机构名（nt）
                 tag0 = str(x.nature)
@@ -674,9 +854,13 @@ class HarvestText:
                     entity_type_dict[x.word] = "机构名"
                 elif tag0.startswith("nz"):
                     entity_type_dict[x.word] = "其他专名"
+                possegs.append((x.word, tag0))
         except:
             pass
-        return entity_type_dict
+        if return_posseg:
+            return entity_type_dict, possegs
+        else:
+            return entity_type_dict
     def dependency_parse(self, sent, standard_name=False, stopwords=None):
         '''依存句法分析，调用pyhanlp的接口，并且融入了harvesttext的实体识别机制。不保证高准确率。
 

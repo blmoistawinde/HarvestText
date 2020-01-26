@@ -9,3 +9,4 @@
 *.tar
 *.gz
 *ht_model1
+/docs/_build/

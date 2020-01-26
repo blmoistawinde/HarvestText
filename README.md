@@ -4,7 +4,7 @@ Sow with little data seed, harvest much from a text field.
 
 播撒几多种子词，收获万千领域实
 
-![GitHub stars](https://img.shields.io/github/stars/blmoistawinde/harvesttext?style=social) ![PyPI - Python Version](https://img.shields.io/badge/python-3.6-blue.svg) ![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg) ![Version](https://img.shields.io/badge/version-V0.6-red.svg) 
+![GitHub stars](https://img.shields.io/github/stars/blmoistawinde/harvesttext?style=social) ![PyPI - Python Version](https://img.shields.io/badge/python-3.6+-blue.svg) ![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg) ![Version](https://img.shields.io/badge/version-V0.7-red.svg) 
 
 ## 用途
 HarvestText是一个专注无（弱）监督方法，能够整合领域知识（如类型，别名）对特定领域文本进行简单高效地处理和分析的库。适用于许多文本预处理和初步探索性分析任务，在小说分析，网络文本，专业文献等领域都有潜在应用价值。
@@ -29,12 +29,14 @@ HarvestText是一个专注无（弱）监督方法，能够整合领域知识（
 - 基本处理
 	- [精细分词分句](#实体链接)
 		- 可包含指定词和类别的分词。充分考虑省略号，双引号等特殊标点的分句。
-	- [文本清洗(更新)](#文本清洗)
+	- [文本清洗](#文本清洗)
 	    - 处理URL, email, 微博等文本中的特殊符号和格式，去除所有标点等
 	- [实体链接](#实体链接)
 		- 把别名，缩写与他们的标准名联系起来。 
 	- [命名实体识别](#命名实体识别)
 		- 找到一句句子中的人名，地名，机构名等命名实体。
+	- [实体别名自动识别(更新！)](./examples/entity_discover/entity_discover.ipynb)
+	    - 从大量文本中自动识别出实体及其可能别名，直接用于[实体链接](#实体链接)。例子见[这里]((./examples/entity_discover/entity_discover.ipynb))
 	- [依存句法分析](#依存句法分析)
 		- 分析语句中各个词语（包括链接到的实体）的主谓宾语修饰等语法关系，
 	- [内置资源](#内置资源)
@@ -43,9 +45,9 @@ HarvestText是一个专注无（弱）监督方法，能够整合领域知识（
 		- 统计特定实体出现的位置，次数等。
 	- [新词发现](#新词发现)
 		- 利用统计规律（或规则）发现语料中可能会被传统分词遗漏的特殊词汇。也便于从文本中快速筛选出关键词。
-	- [字符拼音纠错](#字符拼音纠错)
+	- [字符拼音纠错(调整)](#字符拼音纠错)
 		- 把语句中有可能是已知实体的错误拼写（误差一个字符或拼音）的词语链接到对应实体。
-	- [自动分段(更新)](#自动分段)
+	- [自动分段](#自动分段)
 	    - 使用TextTiling算法，对没有分段的文本自动分段，或者基于已有段落进一步组织/重新分段
 	- [存取消除](#存取与消除)
 		- 可以本地保存模型再读取复用，也可以消除当前模型的记录。
@@ -68,7 +70,7 @@ HarvestText是一个专注无（弱）监督方法，能够整合领域知识（
 首先安装，
 使用pip
 ```shell script
-pip install harvesttext
+pip install --upgrade harvesttext
 ```
 
 或进入setup.py所在目录，然后命令行:
@@ -264,25 +266,31 @@ print(ht0.triple_extraction(para))
 
 ### 字符拼音纠错
 
+_在V0.7版修改，使用tolerance支持拼音相同的检查_
+
 把语句中有可能是已知实体的错误拼写（误差一个字符或拼音）的词语链接到对应实体。
 ```python
 def entity_error_check():
     ht0 = HarvestText()
     typed_words = {"人名":["武磊"]}
     ht0.add_typed_words(typed_words)
+    sent0 = "武磊和吴磊拼音相同"
+    print(sent0)
+    print(ht0.entity_linking(sent0, pinyin_tolerance=0))
     sent1 = "武磊和吴力只差一个拼音"
     print(sent1)
-    print(ht0.entity_linking(sent1, pinyin_recheck=True))
+    print(ht0.entity_linking(sent1, pinyin_tolerance=1))
     sent2 = "武磊和吴磊只差一个字"
     print(sent2)
-    print(ht0.entity_linking(sent2, char_recheck=True))
+    print(ht0.entity_linking(sent2, char_tolerance=1))
     sent3 = "吴磊和吴力都可能是武磊的代称"
     print(sent3)
-    print(ht0.get_linking_mention_candidates(sent3, pinyin_recheck=True, char_recheck=True))
-entity_error_check()
+    print(ht0.get_linking_mention_candidates(sent3, pinyin_tolerance=1, char_tolerance=1))
 ```
 
 ```
+武磊和吴磊拼音相同
+[([0, 2], ('武磊', '#人名#')), [(3, 5), ('武磊', '#人名#')]]
 武磊和吴力只差一个拼音
 [([0, 2], ('武磊', '#人名#')), [(3, 5), ('武磊', '#人名#')]]
 武磊和吴磊只差一个字

@@ -7,3 +7,6 @@ pypinyin
 pyhanlp
 rdflib
 pyxDamerauLevenshtein==1.5
+python-louvain
+tqdm
+w3lib
