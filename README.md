@@ -36,7 +36,7 @@ HarvestText是一个专注无（弱）监督方法，能够整合领域知识（
 	- [命名实体识别](#命名实体识别)
 		- 找到一句句子中的人名，地名，机构名等命名实体。
 	- [实体别名自动识别(更新！)](./examples/entity_discover/entity_discover.ipynb)
-	    - 从大量文本中自动识别出实体及其可能别名，直接用于[实体链接](#实体链接)。例子见[这里]((./examples/entity_discover/entity_discover.ipynb))
+	    - 从大量文本中自动识别出实体及其可能别名，直接用于[实体链接](#实体链接)。例子见[这里](./examples/entity_discover/entity_discover.ipynb)
 	- [依存句法分析](#依存句法分析)
 		- 分析语句中各个词语（包括链接到的实体）的主谓宾语修饰等语法关系，
 	- [内置资源](#内置资源)
