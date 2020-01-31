@@ -593,7 +593,8 @@ class HarvestText:
             out_lines.append(" ".join("%s||%s" % (ename, etype) for ename in enames))
 
         dir0 = os.path.dirname(save_path)
-        os.makedirs(dir0, exist_ok=True)
+        if dir0 != "":        # 如果在当前路径，则makedirs会报错
+            os.makedirs(dir0, exist_ok=True)
         with open(save_path, "w", encoding='utf-8') as f:
             f.write("\n".join(out_lines))
 
@@ -622,7 +623,7 @@ class HarvestText:
         self.type_entity_mention_dict = type_entity_mention_dict
         self._add_entities(type_entity_mention_dict)
 
-    def entity_discover(self, text, method="NFL", min_count=5, pinyin_tolerance=0, **kwargs):
+    def entity_discover(self, text, return_count=False, method="NFL", min_count=5, pinyin_tolerance=0, **kwargs):
         """无监督地从较大量文本中发现实体的类别和多个同义mention。建议对千句以上的文本来挖掘，并且文本的主题比较集中。
             效率：在测试环境下处理一个约10000句的时间大约是20秒。另一个约200000句的语料耗时2分半
             精度：算法准确率不高，但是可以初步聚类，建议先save_entities后, 再进行手动进行调整，然后load_entities再用于进一步挖掘
@@ -630,6 +631,7 @@ class HarvestText:
             ref paper: Mining Entity Synonyms with Efficient Neural Set Generation(https://arxiv.org/abs/1811.07032v1)
 
         :param text: string or list of string
+        :param return_count: (default False) 是否再返回每个mention的出现次数
         :param method: 使用的算法， 目前可选 "NFL" (NER+Fasttext+Louvain+模式修复，基于语义和规则发现同义实体，但可能聚集过多错误实体), "NERP"(NER+模式修复, 仅基于规则发现同义实体)
         :param min_count: (default 5) mininum freq of word to be included
         :param pinyin_tolerance: {None, 0, 1} 合并拼音相同(取0时)或者差别只有一个(取1时)的候选词到同一组实体，默认使用(0)
@@ -675,19 +677,23 @@ class HarvestText:
 
         entity_count = pd.Series(entity_count)
         entity_count = entity_count[entity_count >= min_count]
-        pop_words = {wd for wd, cnt in wd_count.items() if cnt >= min_count}
+        pop_words_cnt = {wd:cnt for wd, cnt in wd_count.items() if cnt >= min_count}
         id2word = entity_count.index.tolist()
         word2id = {wd: i for (i, wd) in enumerate(id2word)}
 
         type_entity_dict2 = {k: list(v) for k, v in type_entity_dict.items()}
         if method == "NFL":
-            discoverer = NFLEntityDiscoverer(sent_words, type_entity_dict2, entity_count, pop_words, word2id, id2word,
+            discoverer = NFLEntityDiscoverer(sent_words, type_entity_dict2, entity_count, pop_words_cnt, word2id, id2word,
                                              min_count, pinyin_tolerance, self.pinyin_adjlist, **kwargs)
         elif method == "NERP":
-            discoverer = NERPEntityDiscover(sent_words, type_entity_dict2, entity_count, pop_words, word2id, id2word,
+            discoverer = NERPEntityDiscover(sent_words, type_entity_dict2, entity_count, pop_words_cnt, word2id, id2word,
                                             min_count, pinyin_tolerance, self.pinyin_adjlist, **kwargs)
         entity_mention_dict, entity_type_dict = discoverer.entity_mention_dict, discoverer.entity_type_dict
-        return entity_mention_dict, entity_type_dict
+        mention_count = discoverer.mention_count         # 新添加的mention的count在discoverer里更新
+        if return_count:
+            return entity_mention_dict, entity_type_dict, mention_count
+        else:
+            return entity_mention_dict, entity_type_dict
 
     def cut_sentences(self, para, drop_empty_line=True, strip=True, deduplicate=False):
         '''cut_sentences

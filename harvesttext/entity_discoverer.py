@@ -11,15 +11,16 @@ from sklearn.metrics.pairwise import cosine_similarity
 from gensim.models import FastText
 
 class NERPEntityDiscover:
-    def __init__(self, sent_words, type_entity_dict, entity_count, pop_words, word2id, id2word,
+    def __init__(self, sent_words, type_entity_dict, entity_count, pop_words_cnt, word2id, id2word,
                  min_count=5, pinyin_tolerance=0, pinyin_adjlist=None, **kwargs):
         self.type_entity_dict = type_entity_dict
         self.entity_count = entity_count
         self.pinyin_adjlist = pinyin_adjlist
         self.word2id, self.id2word = word2id, id2word
         self.mentions = set(x[:x.rfind("_")] for x in self.word2id)
+        self.mention_count = {x[:x.rfind("_")]:cnt for x, cnt in self.entity_count.items()}
         partition = {i: i for i, word in enumerate(self.id2word)}
-        partition, pattern_entity2mentions = self.postprocessing(partition, pinyin_tolerance, pop_words)
+        partition, pattern_entity2mentions = self.postprocessing(partition, pinyin_tolerance, pop_words_cnt)
         self.entity_mention_dict, self.entity_type_dict = self.organize(partition, pattern_entity2mentions)
 
     def get_pinyin_correct_candidates(self, word, tolerance):  # 默认最多容忍一个拼音的变化
@@ -37,7 +38,7 @@ class NERPEntityDiscover:
             mention_cands |= self.pinyin_mention_dict[pinyin]
         return list(mention_cands)
 
-    def postprocessing(self, partition, pinyin_tolerance, pop_words):
+    def postprocessing(self, partition, pinyin_tolerance, pop_words_cnt):
         """应用模式修复一些小问题
 
         :return: partition, pattern_entity2mentions
@@ -69,8 +70,10 @@ class NERPEntityDiscover:
                         eid2 = self.word2id[entity2]
                         partition[eid1] = partition[eid2]
                     if (pname in ["district", "organization"]) and len(trim_entity) > 1:
-                        if trim_entity in self.mentions or pop_words:
+                        if trim_entity in self.mentions or trim_entity in pop_words_cnt:
                             pattern_entity2mentions[entity_type].add(trim_entity)
+                            if trim_entity not in self.mention_count:
+                                self.mention_count[trim_entity] = pop_words_cnt[trim_entity]
 
             # pinyin recheck
             if pinyin_tolerance is not None:
@@ -103,33 +106,38 @@ class NERPEntityDiscover:
 
         entity_mention_dict, entity_type_dict = defaultdict(set), {}
         for mentions0, entity_infos in zip(cluster_mentions, cluster_entities):
+            if entity_infos[0] == "entity" or entity_infos[1] <= 0:
+                continue
             entity0 = entity_infos[0]
             etype0 = entity0[entity0.rfind("_") + 1:]
             entity_mention_dict[entity0] = mentions0
             entity_type_dict[entity0] = etype0
 
-        for entity, mentions0 in pattern_entity2mentions.items():
-            entity_mention_dict[entity] |= mentions0
+        for entity0, mentions0 in pattern_entity2mentions.items():
+            entity_mention_dict[entity0] |= mentions0
+            etype0 = entity0[entity0.rfind("_") + 1:]
+            entity_type_dict[entity0] = etype0
 
         return entity_mention_dict, entity_type_dict
 
 
 class NFLEntityDiscoverer(NERPEntityDiscover):
-    def __init__(self, sent_words, type_entity_dict, entity_count, pop_words, word2id, id2word,
+    def __init__(self, sent_words, type_entity_dict, entity_count, pop_words_cnt, word2id, id2word,
                  min_count=5, pinyin_tolerance=0, pinyin_adjlist=None,
                  emb_dim=50, ft_iters=20, use_subword=True, threshold=0.98,
                  min_n=1, max_n=4, **kwargs):
-        super(NFLEntityDiscoverer, self).__init__(sent_words, type_entity_dict, entity_count, pop_words, word2id, id2word,
+        super(NFLEntityDiscoverer, self).__init__(sent_words, type_entity_dict, entity_count, pop_words_cnt, word2id, id2word,
                                                   min_count, pinyin_tolerance, pinyin_adjlist, **kwargs)
         self.type_entity_dict = type_entity_dict
         self.entity_count = entity_count
         self.pinyin_adjlist = pinyin_adjlist
         self.mentions = set(x[:x.rfind("_")] for x in self.word2id)
+        self.mention_count = {x[:x.rfind("_")]:cnt for x, cnt in self.entity_count.items()}
         self.emb_mat, self.word2id, self.id2word = self.train_emb(sent_words, word2id, id2word,
                                                                   emb_dim, min_count, ft_iters, use_subword,
                                                                   min_n, max_n)
         partition = self.clustering(threshold)
-        partition, pattern_entity2mentions = self.postprocessing(partition, pinyin_tolerance, pop_words)
+        partition, pattern_entity2mentions = self.postprocessing(partition, pinyin_tolerance, pop_words_cnt)
         self.entity_mention_dict, self.entity_type_dict = self.organize(partition, pattern_entity2mentions)
 
     def train_emb(self, sent_words, word2id, id2word, emb_dim, min_count, ft_iters, use_subword, min_n, max_n):

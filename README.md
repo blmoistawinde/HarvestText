@@ -8,7 +8,6 @@ Sow with little data seed, harvest much from a text field.
 ![PyPI - Python Version](https://img.shields.io/badge/python-3.6+-blue.svg) 
 ![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg) 
 ![Version](https://img.shields.io/badge/version-V0.7-red.svg)
-![Doc](https://img.shields.io/readthedocs/harvesttext)
 
 ## 用途
 HarvestText是一个专注无（弱）监督方法，能够整合领域知识（如类型，别名）对特定领域文本进行简单高效地处理和分析的库。适用于许多文本预处理和初步探索性分析任务，在小说分析，网络文本，专业文献等领域都有潜在应用价值。
