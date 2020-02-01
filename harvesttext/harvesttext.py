@@ -1126,7 +1126,7 @@ class HarvestText:
                         pos_seeds=None, neg_seeds=None, stopwords=None):
         '''利用种子词，构建情感词典
 
-        :param sents: list of string, 文本列表
+        :param sents: list of string, 一般建议为句子，是计算共现PMI的基本单元
         :param method: "PMI", 使用的算法，目前仅支持PMI
         :param min_times: int, 默认为5， 在所有句子中出现次数少于这个次数的词语将被过滤
         :param scale: {"None","0-1","+-1"}, 默认为"None"，否则将对情感值进行变换
@@ -1135,7 +1135,7 @@ class HarvestText:
         :param pos_seeds: list of string, 积极种子词，如不填写将默认采用清华情感词典
         :param neg_seeds: list of string, 消极种子词，如不填写将默认采用清华情感词典
         :param stopwords: list of string, stopwords词，如不填写将不使用
-        :return: sent_dict: 构建好的情感词典，可以像dict一样查询单个词语的情感值
+        :return: sent_dict: dict,可以查询单个词语的情感值
         '''
         if pos_seeds is None or neg_seeds is None:
             sdict = get_qh_sent_dict()
@@ -1147,10 +1147,16 @@ class HarvestText:
                 docs[i] = docs[i] - stopwords
             docs = list(filter(lambda x: len(x) > 0, docs))
         self.sent_dict = SentDict(docs, method, min_times, scale, pos_seeds, neg_seeds)
-        return self.sent_dict
+        return self.sent_dict.sent_dict
 
-    def analyse_sent(self, sent):
-        return self.sent_dict.analyse_sent(self.seg(sent))
+    def analyse_sent(self, sent, avg=True):
+        """输入句子，输出其情感值，默认使用句子中，在情感词典中的词语的情感值的平均来计算
+
+        :param sent: string, 句子
+        :param avg: (default True) 是否使用平均值计算句子情感值
+        :return: float情感值(if avg == True), 否则为词语情感值列表
+        """
+        return self.sent_dict.analyse_sent(self.seg(sent), avg)
 
     #
     # 实体检索模块

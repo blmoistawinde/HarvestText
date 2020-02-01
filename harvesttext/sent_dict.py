@@ -36,13 +36,13 @@ class SentDict(object):
                     raise Exception("你的文章中不包含种子词，SO-PMI算法无法执行")
             else:
                 raise Exception("不支持的情感分析算法")
-    def analyse_sent(self,words):
+    def analyse_sent(self, words, avg):
         if self.method == "PMI":
             words = (set(words) & set(self.sent_dict))
-            if len(words) > 0:
-                return sum(self.sent_dict[word] for word in words) / len(words)
+            if avg:
+                return sum(self.sent_dict[word] for word in words) / len(words) if len(words) > 0 else 0
             else:
-                return 0
+                return [self.sent_dict[word] for word in words]
         else:
             raise Exception("不支持的情感分析算法")
         

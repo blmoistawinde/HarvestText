@@ -110,12 +110,8 @@ class NERPEntityDiscover:
                 continue
             entity0 = entity_infos[0]
             etype0 = entity0[entity0.rfind("_") + 1:]
-            entity_mention_dict[entity0] = mentions0
-            entity_type_dict[entity0] = etype0
-
-        for entity0, mentions0 in pattern_entity2mentions.items():
-            entity_mention_dict[entity0] |= mentions0
-            etype0 = entity0[entity0.rfind("_") + 1:]
+            mentions_pattern = set() if entity0 not in pattern_entity2mentions else pattern_entity2mentions[entity0]
+            entity_mention_dict[entity0] = mentions0 | mentions_pattern
             entity_type_dict[entity0] = etype0
 
         return entity_mention_dict, entity_type_dict
