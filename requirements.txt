@@ -9,3 +9,4 @@ rdflib
 python-louvain
 tqdm
 w3lib
+nltk

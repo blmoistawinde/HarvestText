@@ -54,6 +54,8 @@ HarvestText是一个专注无（弱）监督方法，能够整合领域知识（
 	    - 使用TextTiling算法，对没有分段的文本自动分段，或者基于已有段落进一步组织/重新分段
 	- [存取消除](#存取与消除)
 		- 可以本地保存模型再读取复用，也可以消除当前模型的记录。
+	- [英语支持](#英语支持)
+	    - 本库主要旨在支持对中文的数据挖掘，但是加入了包括情感分析在内的少量英语支持
 - 高层应用
 	- [情感分析](#情感分析)
 		- 给出少量种子词（通用的褒贬义词语），得到语料中各个词语和语段的褒贬度。
@@ -672,6 +674,65 @@ for question0 in questions:
 问：谁复辟了帝制？
 答：袁世凯
 ```
+
+<a id="文本清洗"> </a>
+
+### 英语支持
+
+本库主要旨在支持对中文的数据挖掘，但是加入了包括情感分析在内的少量英语支持。
+
+需要使用这些功能，需要创建一个专门英语模式的HarvestText对象。
+
+```python
+# ♪ "Until the Day" by JJ Lin
+test_text = """
+In the middle of the night. 
+Lonely souls travel in time.
+Familiar hearts start to entwine.
+We imagine what we'll find, in another life.  
+""".lower()
+ht_eng = HarvestText(language="en")
+sentences = ht_eng.cut_sentences(test_text)  # 分句
+print("\n".join(sentences))
+print(ht_eng.seg(sentences[-1]))             # 分词[及词性标注]
+print(ht_eng.posseg(sentences[0], stopwords={"in"}))
+# 情感分析
+sent_dict = ht_eng.build_sent_dict(sentences, pos_seeds=["familiar"], neg_seeds=["lonely"],
+                                   min_times=1, stopwords={'in', 'to'})
+print("sentiment analysis")
+for sent0 in sentences:
+    print(sent0, "%.3f" % ht_eng.analyse_sent(sent0))
+# 自动分段
+print("Segmentation")
+print("\n".join(ht_eng.cut_paragraphs(test_text, num_paras=2)))
+
+# 情感分析也提供了一个内置英文词典资源
+# from harvesttext.resources import get_english_senti_lexicon
+# sent_lexicon = get_english_senti_lexicon()
+# sent_dict = ht_eng.build_sent_dict(sentences, pos_seeds=sent_lexicon["pos"], neg_seeds=sent_lexicon["neg"], min_times=1)
+```
+
+```
+in the middle of the night.
+lonely souls travel in time.
+familiar hearts start to entwine.
+we imagine what we'll find, in another life.
+
+['we', 'imagine', 'what', 'we', "'ll", 'find', ',', 'in', 'another', 'life', '.']
+[('the', 'DET'), ('middle', 'NOUN'), ('of', 'ADP'), ('the', 'DET'), ('night', 'NOUN'), ('.', '.')]
+
+sentiment analysis
+in the middle of the night. 0.000
+lonely souls travel in time. -1.600
+familiar hearts start to entwine. 1.600
+we imagine what we'll find, in another life. 0.000
+
+Segmentation
+in the middle of the night. lonely souls travel in time. familiar hearts start to entwine.
+we imagine what we'll find, in another life.
+```
+
+目前对英语的支持并不完善，除去上述示例中的功能，其他功能不保证能够使用。
 
 ## More
 

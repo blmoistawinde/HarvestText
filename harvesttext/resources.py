@@ -83,4 +83,25 @@ def get_sanguo_entity_dict():
         entity_dict = json.load(f)
     return entity_dict["mention"], entity_dict["type"]
 
+def get_english_senti_lexicon(type="LH"):
+    """
+    获得英语情感词汇表
+
+    目前默认为来自这里的词汇表
+    https://www.cs.uic.edu/~liub/FBS/sentiment-analysis.html#lexicon
+
+    If you use this list, please cite the following paper:
+
+       Minqing Hu and Bing Liu. "Mining and Summarizing Customer Reviews."
+           Proceedings of the ACM SIGKDD International Conference on Knowledge
+           Discovery and Data Mining (KDD-2004), Aug 22-25, 2004, Seattle,
+           Washington, USA,
+
+    :return: sent_dict = {"pos":[words],"neg":[words]}
+    """
+    pwd = os.path.abspath(os.path.dirname(__file__))
+    with open(pwd + "/resources/LH_senti_lexicon.json", "r", encoding="utf-8") as f:
+        senti_lexicon = json.load(f)
+    return senti_lexicon
+
 

@@ -23,9 +23,8 @@ import warnings
 from tqdm import tqdm
 from pypinyin import lazy_pinyin, pinyin
 
-
 class HarvestText:
-    def __init__(self, standard_name=False):
+    def __init__(self, standard_name=False, language='zh_CN'):
         self.standard_name = standard_name  # 是否使用连接到的实体名来替换原文
         self.entity_types = set()
         self.trie_root = {}
@@ -45,6 +44,7 @@ class HarvestText:
         pwd = os.path.abspath(os.path.dirname(__file__))
         with open(pwd + "/resources/pinyin_adjlist.json", "r", encoding="utf-8") as f:
             self.pinyin_adjlist = json.load(f)
+        self.language = language
     #
     # 实体分词模块
     #
@@ -500,47 +500,59 @@ class HarvestText:
         return processed_text
 
     def posseg(self, sent, standard_name=False, stopwords=None):
-        self.standard_name = standard_name
-        entities_info = self.entity_linking(sent)
-        sent2 = self.decoref(sent, entities_info)
-        result = []
-        i = 0
-        for word, flag in pseg.cut(sent2):
-            if word in self.entity_types:
-                if self.standard_name:
-                    word = entities_info[i][1][0]  # 使用链接的实体
-                else:
-                    l, r = entities_info[i][0]  # 或使用原文
-                    word = sent[l:r]
-                flag = entities_info[i][1][1][1:-1]
-                i += 1
-            else:
-                if stopwords and word in stopwords:
-                    continue
-            result.append((word, flag))
-        return result
-    def seg(self, sent, standard_name=False, stopwords=None, return_sent=False):
-        self.standard_name = standard_name
-        entities_info = self.entity_linking(sent)
-        sent2 = self.decoref(sent, entities_info)
-        result = []
-        i = 0
-        for word in jieba.cut(sent2):
-            if word in self.entity_types:
-                if self.standard_name:
-                    word = entities_info[i][1][0]  # 使用链接的实体
-                else:
-                    l, r = entities_info[i][0]  # 或使用原文
-                    word = sent[l:r]
-                i += 1
-            else:
-                if stopwords and word in stopwords:
-                    continue
-            result.append(word)
-        if return_sent:
-            return " ".join(result)
+        if self.language == 'en':
+            from nltk import word_tokenize, pos_tag
+            stopwords = set() if stopwords is None else stopwords
+            tokens = [word for word in word_tokenize(sent) if word not in stopwords]
+            return pos_tag(tokens, tagset='universal')
         else:
+            self.standard_name = standard_name
+            entities_info = self.entity_linking(sent)
+            sent2 = self.decoref(sent, entities_info)
+            result = []
+            i = 0
+            for word, flag in pseg.cut(sent2):
+                if word in self.entity_types:
+                    if self.standard_name:
+                        word = entities_info[i][1][0]  # 使用链接的实体
+                    else:
+                        l, r = entities_info[i][0]  # 或使用原文
+                        word = sent[l:r]
+                    flag = entities_info[i][1][1][1:-1]
+                    i += 1
+                else:
+                    if stopwords and word in stopwords:
+                        continue
+                result.append((word, flag))
             return result
+    def seg(self, sent, standard_name=False, stopwords=None, return_sent=False):
+        if self.language == "en":
+            from nltk.tokenize import word_tokenize
+            stopwords = set() if stopwords is None else stopwords
+            words = [x for x in word_tokenize(sent) if not x in stopwords]
+            return " ".join(words) if return_sent else words
+        else:
+            self.standard_name = standard_name
+            entities_info = self.entity_linking(sent)
+            sent2 = self.decoref(sent, entities_info)
+            result = []
+            i = 0
+            for word in jieba.cut(sent2):
+                if word in self.entity_types:
+                    if self.standard_name:
+                        word = entities_info[i][1][0]  # 使用链接的实体
+                    else:
+                        l, r = entities_info[i][0]  # 或使用原文
+                        word = sent[l:r]
+                    i += 1
+                else:
+                    if stopwords and word in stopwords:
+                        continue
+                result.append(word)
+            if return_sent:
+                return " ".join(result)
+            else:
+                return result
     def save_entity_info(self, save_path='./ht_entities.txt', entity_mention_dict=None, entity_type_dict=None):
         '''保存ht已经登录的实体信息，或者外部提供的相同格式的信息，目前保存的信息包括entity,mention,type.
 
@@ -706,19 +718,29 @@ class HarvestText:
         '''
         if deduplicate:
             para = re.sub(r"([。！？\!\?])\1+", r"\1", para)
-        para = re.sub('([。！？\?!])([^”’])', r"\1\n\2", para)  # 单字符断句符
-        para = re.sub('(\.{6})([^”’])', r"\1\n\2", para)  # 英文省略号
-        para = re.sub('(\…{2})([^”’])', r"\1\n\2", para)  # 中文省略号
-        para = re.sub('([。！？\?!][”’])([^，。！？\?])', r'\1\n\2', para)
-        # 如果双引号前有终止符，那么双引号才是句子的终点，把分句符\n放到双引号后，注意前面的几句都小心保留了双引号
-        para = para.rstrip()  # 段尾如果有多余的\n就去掉它
-        # 很多规则中会考虑分号;，但是这里我把它忽略不计，破折号、英文双引号等同样忽略，需要的再做些简单调整即可。
-        sentences = para.split("\n")
-        if strip:
-            sentences = [sent.strip() for sent in sentences]
-        if drop_empty_line:
-            sentences = [sent for sent in sentences if len(sent.strip()) > 0]
-        return sentences
+
+        if self.language == 'en':
+            from nltk import sent_tokenize
+            sents = sent_tokenize(para)
+            if strip:
+                sents = [x.strip() for x in sents]
+            if drop_empty_line:
+                sents = [x for x in sents if len(x.strip()) > 0]
+            return sents
+        else:
+            para = re.sub('([。！？\?!])([^”’])', r"\1\n\2", para)  # 单字符断句符
+            para = re.sub('(\.{6})([^”’])', r"\1\n\2", para)  # 英文省略号
+            para = re.sub('(\…{2})([^”’])', r"\1\n\2", para)  # 中文省略号
+            para = re.sub('([。！？\?!][”’])([^，。！？\?])', r'\1\n\2', para)
+            # 如果双引号前有终止符，那么双引号才是句子的终点，把分句符\n放到双引号后，注意前面的几句都小心保留了双引号
+            para = para.rstrip()  # 段尾如果有多余的\n就去掉它
+            # 很多规则中会考虑分号;，但是这里我把它忽略不计，破折号、英文双引号等同样忽略，需要的再做些简单调整即可。
+            sentences = para.split("\n")
+            if strip:
+                sentences = [sent.strip() for sent in sentences]
+            if drop_empty_line:
+                sentences = [sent for sent in sentences if len(sent.strip()) > 0]
+            return sentences
 
     def cut_paragraphs(self, text, num_paras=None, block_sents=3, std_weight=0.5,
                        align_boundary=True, use_stopwords=True, remove_puncts=True):
@@ -764,7 +786,8 @@ class HarvestText:
         texttiler = TextTile()
         predicted_boundary_ids = texttiler.cut_paragraphs(sent_words, num_paras, block_sents, std_weight,
                                                           align_boundary, original_boundary_ids)
-        predicted_paras = ["".join(sentences[l:r]) for l, r in zip([0]+predicted_boundary_ids[:-1], predicted_boundary_ids)]
+        jointer = " " if self.language == 'en' else ""
+        predicted_paras = [jointer.join(sentences[l:r]) for l, r in zip([0]+predicted_boundary_ids[:-1], predicted_boundary_ids)]
         return predicted_paras
 
     def clean_text(self, text, remove_url=True, email=True, weibo_at=True, stop_terms=("转发微博",),
@@ -1137,7 +1160,7 @@ class HarvestText:
         :param stopwords: list of string, stopwords词，如不填写将不使用
         :return: sent_dict: dict,可以查询单个词语的情感值
         '''
-        if pos_seeds is None or neg_seeds is None:
+        if pos_seeds is None and neg_seeds is None:
             sdict = get_qh_sent_dict()
             pos_seeds, neg_seeds = sdict["pos"], sdict["neg"]
         docs = [set(self.seg(sent)) for sent in sents]

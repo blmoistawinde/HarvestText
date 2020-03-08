@@ -356,7 +356,37 @@ def cut_paragraph():
     predicted_paras = ht0.cut_paragraphs(text, num_paras=3)
     print("\n".join(predicted_paras)+"\n")
 
+def test_english():
+    # ♪ "Until the Day" by JJ Lin
+    test_text = """
+    In the middle of the night. 
+    Lonely souls travel in time.
+    Familiar hearts start to entwine.
+    We imagine what we'll find, in another life.  
+    """.lower()
+    ht_eng = HarvestText(language="en")
+    sentences = ht_eng.cut_sentences(test_text)
+    print("\n".join(sentences))
+    print(ht_eng.seg(sentences[-1]))
+    print(ht_eng.posseg(sentences[0], stopwords={"in"}))
+    sent_dict = ht_eng.build_sent_dict(sentences, pos_seeds=["familiar"], neg_seeds=["lonely"],
+                                       min_times=1, stopwords={'in', 'to'})
+    print("Sentiment analysis")
+    for sent0 in sentences:
+        print(sent0, "%.3f" % ht_eng.analyse_sent(sent0))
+    print("Segmentation")
+    print("\n".join(ht_eng.cut_paragraphs(test_text, num_paras=2)))
+    # from harvesttext.resources import get_english_senti_lexicon
+    # sent_lexicon = get_english_senti_lexicon()
+    # sent_dict = ht_eng.build_sent_dict(sentences, pos_seeds=sent_lexicon["pos"], neg_seeds=sent_lexicon["neg"], min_times=1)
+    # print("sentiment analysis(with lexicon)")
+    # for sent0 in sentences:
+    #     print(sent0, ht_eng.analyse_sent(sent0))
+
+
+
 if __name__ == "__main__":
+    test_english()
     new_word_discover()
     new_word_register()
     entity_segmentation()
