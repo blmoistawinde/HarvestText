@@ -22,6 +22,7 @@ import logging
 import warnings
 from tqdm import tqdm
 from pypinyin import lazy_pinyin, pinyin
+from opencc import OpenCC
 
 class HarvestText:
     def __init__(self, standard_name=False, language='zh_CN'):
@@ -743,7 +744,7 @@ class HarvestText:
             return sentences
 
     def cut_paragraphs(self, text, num_paras=None, block_sents=3, std_weight=0.5,
-                       align_boundary=True, use_stopwords=True, remove_puncts=True):
+                       align_boundary=True, use_stopwords=True, remove_puncts=True, **kwargs):
         '''
 
         :param text:
@@ -753,6 +754,7 @@ class HarvestText:
         :param align_boundary: 新划分的段落是否要与原有的换行处对齐
         :param use_stopwords: （默认为True）是否在算法中引入停用词，一般能够提升准确度
         :param remove_puncts: （默认为True）是否在算法中去除标点符号，一般能够提升准确度
+        :param **kwargs: passed to ht.cut_sentences, like deduplicate
         :return:
         '''
         if num_paras is not None:
@@ -771,7 +773,7 @@ class HarvestText:
                 original_boundary_ids.append(len(sentences))
         else:
             original_boundary_ids = None
-            sentences = self.cut_sentences(text)
+            sentences = self.cut_sentences(text, **kwargs)
         # with entity resolution, can better decide similarity
         if remove_puncts:
             allpuncs = re.compile(
@@ -792,7 +794,8 @@ class HarvestText:
 
     def clean_text(self, text, remove_url=True, email=True, weibo_at=True, stop_terms=("转发微博",),
                    emoji=True, weibo_topic=False, deduplicate_space=True,
-                   norm_url=False, norm_html=False, to_url=False, remove_puncts=False, remove_tags=True):
+                   norm_url=False, norm_html=False, to_url=False,
+                   remove_puncts=False, remove_tags=True, t2s=False):
         '''
         进行各种文本清洗操作，微博中的特殊格式，网址，email，html代码，等等
 
@@ -809,6 +812,7 @@ class HarvestText:
         :param to_url: （默认不使用）将普通格式的字符转为还原URL中的特殊字符，用于请求，如(空格转为%20)
         :param remove_puncts: （默认不使用）移除所有标点符号
         :param remove_tags: （默认使用）移除所有html块
+        :param t2s: （默认不使用）繁体字转中文
         :return: 清洗后的文本
         '''
         # 反向的矛盾设置
@@ -838,6 +842,9 @@ class HarvestText:
             text = re.sub(r"#\S+#", "", text)  # 去除话题内容
         if deduplicate_space:
             text = re.sub(r"\s+", " ", text)   # 合并正文中过多的空格
+        if t2s:
+            cc = OpenCC('t2s')
+            text = cc.convert(text)
         assert hasattr(stop_terms, "__init__"), Exception("去除的词语必须是一个可迭代对象")
         if type(stop_terms) == str:
             text = text.replace(stop_terms, "")

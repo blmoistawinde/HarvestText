@@ -157,7 +157,7 @@ print(ht.cut_sentences(para))
 
 可以处理文本中的特殊字符，或者去掉文本中不希望出现的一些特殊格式。
 
-包括：微博的@，表情符；网址；email；html代码中的&nbsp;一类的特殊字符；网址内的%20一类的特殊字符
+包括：微博的@，表情符；网址；email；html代码中的&nbsp;一类的特殊字符；网址内的%20一类的特殊字符；繁体字转简体字
 
 例子如下：
 
@@ -193,6 +193,11 @@ text1 = "&lt;a c&gt;&nbsp;&#x27;&#x27;"
 print("HTML转正常字符")
 print("原：", text1)
 print("清洗后：", ht0.clean_text(text1, norm_html=True))
+# 繁体字转简体
+text1 = "心碎誰買單"
+print("繁体字转简体")
+print("原：", text1)
+print("清洗后：", ht0.clean_text(text1, t2s=True))
 ```
 
 ```
@@ -215,6 +220,9 @@ URL转正常字符
 HTML转正常字符
 原： &lt;a c&gt;&nbsp;&#x27;&#x27;
 清洗后： <a c> ''
+繁体字转简体
+原： 心碎誰買單
+清洗后： 心碎谁买单
 ```
 
 <a id="命名实体识别"> </a>

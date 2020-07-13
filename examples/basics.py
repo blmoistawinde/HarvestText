@@ -341,6 +341,11 @@ def clean_text():
     print("HTML转正常字符")
     print("原：", text1)
     print("清洗后：", ht0.clean_text(text1, norm_html=True))
+    # 繁体字转简体
+    text1 = "心碎誰買單"
+    print("繁体字转简体")
+    print("原：", text1)
+    print("清洗后：", ht0.clean_text(text1, t2s=True))
 
 def cut_paragraph():
     print("文本自动分段")

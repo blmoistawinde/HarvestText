@@ -12,3 +12,4 @@ python-louvain
 tqdm
 w3lib
 nltk
+opencc-python-reimplemented

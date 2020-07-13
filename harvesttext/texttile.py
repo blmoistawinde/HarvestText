@@ -26,14 +26,17 @@ class TextTile:
 
     def _align_boundary(self, predicted_boundary_ids, original_boundary_ids):
         for i, pid in enumerate(predicted_boundary_ids):
-            dist, aligned_oid_at = original_boundary_ids[-1], None
-            for j, oid in enumerate(original_boundary_ids):
+            # avoid exhausts original ids before all aligned
+            preserve_to = len(original_boundary_ids) - len(predicted_boundary_ids) + i + 1
+            aligned_oid_at = preserve_to - 1
+            dist = original_boundary_ids[aligned_oid_at]
+            for j, oid in enumerate(original_boundary_ids[:preserve_to]):
                 dist0 = abs(pid-oid)
                 if dist0 > dist: break
                 dist, aligned_oid_at = dist0, j
             predicted_boundary_ids[i] = original_boundary_ids[aligned_oid_at]
-            # avoid duplicating boundary, will change the list but we don't care
-            del original_boundary_ids[aligned_oid_at]
+            # avoid duplicating or even forward boundary, will change the list
+            del original_boundary_ids[:aligned_oid_at+1]
         return predicted_boundary_ids
 
     def cut_paragraphs(self, sent_words, num_paras=None, block_sents=3, std_weight=0.5,
