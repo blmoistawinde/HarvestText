@@ -20,7 +20,7 @@ HarvestText是一个专注无（弱）监督方法，能够整合领域知识（
 ![2018中超舆情展示系统](https://img-blog.csdnimg.cn/20181027084021173.png)
 
 【注：本库仅完成实体分词和情感分析，可视化使用matplotlib】
-- [近代史纲要信息抽取及问答系统](https://blog.csdn.net/blmoistawinde/article/details/86557070)(命名实体识别，依存句法分析，简易问答系统)
+- [近代史纲要信息抽取及问答系统](https://zhuanlan.zhihu.com/p/163248980)(命名实体识别，依存句法分析，简易问答系统)
 
 本README包含各个功能的典型例子，部分函数的详细用法可在文档中找到：
 
