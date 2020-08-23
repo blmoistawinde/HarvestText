@@ -744,7 +744,8 @@ class HarvestText:
             return sentences
 
     def cut_paragraphs(self, text, num_paras=None, block_sents=3, std_weight=0.5,
-                       align_boundary=True, use_stopwords=True, remove_puncts=True, **kwargs):
+                       align_boundary=True, use_stopwords=True, remove_puncts=True,
+                       seq_chars=-1, **kwargs):
         '''
 
         :param text:
@@ -754,12 +755,26 @@ class HarvestText:
         :param align_boundary: 新划分的段落是否要与原有的换行处对齐
         :param use_stopwords: （默认为True）是否在算法中引入停用词，一般能够提升准确度
         :param remove_puncts: （默认为True）是否在算法中去除标点符号，一般能够提升准确度
+        :param seq_chars: （默认为-1）如果设置为>=1的值，则以包含这个数量的字符为基本单元，代替默认的句子。
         :param **kwargs: passed to ht.cut_sentences, like deduplicate
         :return:
         '''
         if num_paras is not None:
             assert num_paras > 0, "Should give a positive number of num_paras"
         stopwords = get_baidu_stopwords() if use_stopwords else set()
+        if seq_chars < 1:
+            cut_seqs = lambda x: self.cut_sentences(x, **kwargs)
+        else:
+            seq_chars = int(seq_chars)
+            def _cut_seqs(text, len0, strip=True, deduplicate=False):
+                if deduplicate:
+                    text = re.sub(r"([。！？\!\?])\1+", r"\1", text)
+                if strip:
+                    text = text.strip()
+                seqs = [text[i:i+len0] for i in range(0, len(text), len0)]
+                return seqs
+            cut_seqs = lambda x: _cut_seqs(x, seq_chars, **kwargs)
+        
         if align_boundary:
             paras = [para.strip() for para in text.split("\n") if len(para.strip()) > 0]
             if num_paras is not None:
@@ -769,11 +784,11 @@ class HarvestText:
             original_boundary_ids = []
             sentences = []
             for para in paras:
-                sentences.extend(self.cut_sentences(para))
+                sentences.extend(cut_seqs(para))
                 original_boundary_ids.append(len(sentences))
         else:
             original_boundary_ids = None
-            sentences = self.cut_sentences(text, **kwargs)
+            sentences = cut_seqs(text, **kwargs)
         # with entity resolution, can better decide similarity
         if remove_puncts:
             allpuncs = re.compile(
@@ -788,7 +803,7 @@ class HarvestText:
         texttiler = TextTile()
         predicted_boundary_ids = texttiler.cut_paragraphs(sent_words, num_paras, block_sents, std_weight,
                                                           align_boundary, original_boundary_ids)
-        jointer = " " if self.language == 'en' else ""
+        jointer = " " if (self.language == 'en' and seq_chars > 1) else ""
         predicted_paras = [jointer.join(sentences[l:r]) for l, r in zip([0]+predicted_boundary_ids[:-1], predicted_boundary_ids)]
         return predicted_paras
 

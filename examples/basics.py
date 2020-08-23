@@ -347,6 +347,11 @@ def clean_text():
     print("原：", text1)
     print("清洗后：", ht0.clean_text(text1, t2s=True))
 
+def extract_only_chinese(file):
+    pattern = re.compile(r'[^\u4e00-\u9fa5]')
+    chinese = re.sub(pattern, '', file)
+    return chinese
+
 def cut_paragraph():
     print("文本自动分段")
     ht0 = HarvestText()
@@ -360,6 +365,11 @@ def cut_paragraph():
     print("预测文本[手动设置分3段]")
     predicted_paras = ht0.cut_paragraphs(text, num_paras=3)
     print("\n".join(predicted_paras)+"\n")
+    # print("去除标点以后的分段")
+    # text2 = extract_only_chinese(text)
+    # predicted_paras2 = ht0.cut_paragraphs(text2, num_paras=5, seq_chars=10, align_boundary=False)
+    # print("\n".join(predicted_paras2)+"\n")
+
 
 def test_english():
     # ♪ "Until the Day" by JJ Lin
