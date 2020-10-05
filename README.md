@@ -567,11 +567,32 @@ print(new_words)
 
 > ["武磊"]
 
+<details><summary>高级设置（展开查看）</summary>
+可以使用`excluding_words`参数来去除自己不想要的结果，默认包括了停用词。
+
+算法使用了默认的经验参数，如果对结果数量不满意，可以设置`auto_param=False`自己调整参数，调整最终获得的结果的数量，相关参数如下：
+```
+:param max_word_len: 允许被发现的最长的新词长度
+:param min_freq: 被发现的新词，在给定文本中需要达到的最低频率
+:param min_entropy: 被发现的新词，在给定文本中需要达到的最低左右交叉熵
+:param min_aggregation: 被发现的新词，在给定文本中需要达到的最低凝聚度
+```
+
+比如，如果想获得比默认情况更多的结果（比如有些新词没有被发现），可以在默认参数的基础上往下调，下面的默认的参数：
+```
+min_entropy = np.log(length) / 10
+min_freq = min(0.00005, 20.0 / length)
+min_aggregation = np.sqrt(length) / 15
+```
+
+具体的算法细节和参数含义，参考：http://www.matrix67.com/blog/archives/5044
+
+</details>
+<br/>
+
 [根据反馈更新](https://github.com/blmoistawinde/HarvestText/issues/13#issue-551894838) 原本默认接受一个单独的字符串，现在也可以接受字符串列表输入，会自动进行拼接
 
 [根据反馈更新](https://github.com/blmoistawinde/HarvestText/issues/14#issuecomment-576081430) 现在默认按照词频降序排序，也可以传入`sort_by='score'`参数，按照综合质量评分排序。
-
-具体的方法和指标含义，参考：http://www.matrix67.com/blog/archives/5044
 
 发现的新词很多都可能是文本中的特殊关键词，故可以把找到的新词登录，使后续的分词优先分出这些词。
 ```python

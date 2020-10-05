@@ -22,7 +22,7 @@ copyright = '2020, blmoistawinde'
 author = 'blmoistawinde'
 
 # The full version, including alpha/beta/rc tags
-release = '0.7.4.1'
+release = '0.7.4.2'
 
 github_doc_root = 'https://github.com/blmoistawinde/HarvestText/tree/master/doc'
 

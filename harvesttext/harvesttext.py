@@ -744,7 +744,7 @@ class HarvestText:
             return sentences
 
     def cut_paragraphs(self, text, num_paras=None, block_sents=3, std_weight=0.5,
-                       align_boundary=True, use_stopwords=True, remove_puncts=True,
+                       align_boundary=True, stopwords='baidu', remove_puncts=True,
                        seq_chars=-1, **kwargs):
         '''
 
@@ -753,7 +753,7 @@ class HarvestText:
         :param block_sents: 算法的参数，将几句句子分为一个block。一般越大，算法自动划分的段落越少
         :param std_weight: 算法的参数。一般越大，算法自动划分的段落越多
         :param align_boundary: 新划分的段落是否要与原有的换行处对齐
-        :param use_stopwords: （默认为True）是否在算法中引入停用词，一般能够提升准确度
+        :param stopwords: 字符串列表/元组/集合，或者'baidu'为默认百度停用词，在算法中引入的停用词，一般能够提升准确度
         :param remove_puncts: （默认为True）是否在算法中去除标点符号，一般能够提升准确度
         :param seq_chars: （默认为-1）如果设置为>=1的值，则以包含这个数量的字符为基本单元，代替默认的句子。
         :param **kwargs: passed to ht.cut_sentences, like deduplicate
@@ -761,7 +761,8 @@ class HarvestText:
         '''
         if num_paras is not None:
             assert num_paras > 0, "Should give a positive number of num_paras"
-        stopwords = get_baidu_stopwords() if use_stopwords else set()
+        assert stopwords == 'baidu' or (hasattr(stopwords, '__iter__') and type(stopwords) != str) 
+        stopwords = get_baidu_stopwords() if stopwords == 'baidu' else stopwords
         if seq_chars < 1:
             cut_seqs = lambda x: self.cut_sentences(x, **kwargs)
         else:
@@ -1030,16 +1031,21 @@ class HarvestText:
     # 新词发现模块
     #
     def word_discover(self, doc, threshold_seeds=[], auto_param=True,
-                      excluding_types=[], excluding_words=[],  # 可以排除已经登录的某些种类的实体，或者某些指定词
+                      excluding_types=[], excluding_words='baidu_stopwords',  # 可以排除已经登录的某些种类的实体，或者某些指定词
                       max_word_len=5, min_freq=0.00005, min_entropy=1.4, min_aggregation=50,
                       ent_threshold="both", mem_saving=None, sort_by='freq'):
-        '''新词发现
+        '''新词发现，基于 http://www.matrix67.com/blog/archives/5044 实现及微调
 
         :param doc: (string or list) 待进行新词发现的语料，如果是列表的话，就会自动用换行符拼接
         :param threshold_seeds: list of string, 设定能接受的“质量”最差的种子词，更差的词语将会在新词发现中被过滤
         :param auto_param: bool, 使用默认的算法参数
         :param excluding_types: list of str, 设定要过滤掉的特定词性或已经登录到ht的实体类别
         :param excluding_words: list of str, 设定要过滤掉的特定词
+        :param max_word_len: 允许被发现的最长的新词长度
+        :param min_freq: 被发现的新词，在给定文本中需要达到的最低频率
+        :param min_entropy: 被发现的新词，在给定文本中需要达到的最低左右交叉熵
+        :param min_aggregation: 被发现的新词，在给定文本中需要达到的最低凝聚度
+        :param ent_threshold: "both": (默认)在使用左右交叉熵进行筛选时，两侧都必须超过阈值; "avg": 两侧的平均值达到阈值即可
         :param mem_saving: bool or None, 采用一些过滤手段来减少内存使用，但可能影响速度。如果不指定，对长文本自动打开，而对短文本不使用
         :param sort_by: 以下string之一: {'freq': 词频, 'score': 综合分数, 'agg':凝聚度} 按照特定指标对得到的词语信息排序，默认使用词频
         :return: info: 包含新词作为index, 以及对应各项指标的DataFrame
@@ -1069,13 +1075,17 @@ class HarvestText:
         if len(excluding_types) > 0:
             if "#" in list(excluding_types)[0]:  # 化为无‘#’标签
                 excluding_types = [x[1:-1] for x in excluding_types]
-            ex_mentions = [x for enty in self.entity_mention_dict
+            ex_mentions = set(x for enty in self.entity_mention_dict
                            if enty in self.entity_type_dict and
                            self.entity_type_dict[enty] in excluding_types
-                           for x in self.entity_mention_dict[enty]]
+                           for x in self.entity_mention_dict[enty])
         else:
-            ex_mentions = []
-        ex_mentions += excluding_words
+            ex_mentions = set()
+        assert excluding_words == 'baidu_stopwords' or (hasattr(excluding_words, '__iter__') and type(excluding_words) != str) 
+        if excluding_words == 'baidu_stopwords':
+            ex_mentions |= get_baidu_stopwords()
+        else:
+            ex_mentions |= set(excluding_words)
 
         info = ws.get_df_info(ex_mentions)
 
