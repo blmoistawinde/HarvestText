@@ -4,7 +4,7 @@ pip install pyxDamerauLevenshtein==1.5
 """
 
 from harvesttext.harvesttext import HarvestText
-from rdflib import URIRef,Graph,Namespace,Literal
+from rdflib import URIRef, Graph, Namespace, Literal
 from pyxdameraulevenshtein import damerau_levenshtein_distance as edit_dis
 import numpy as np
 

@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
+from harvesttext import __version__
 
 setup(
     name='harvesttext',
     author="blmoistawinde",
     author_email="1840962220@qq.com",
-    version="0.7.4.2",
+    version=__version__,
     license='MIT',
     keywords='NLP, tokenizing, entity linking, sentiment analysis, text cleaning',
     url='https://github.com/blmoistawinde/HarvestText',

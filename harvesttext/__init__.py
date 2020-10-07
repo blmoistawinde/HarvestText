@@ -1,9 +1,11 @@
 #coding=utf-8
 #!/usr/bin/env python
+import pickle
 from .harvesttext import HarvestText
 from .resources import *
 
-import pickle
+__version__ = '0.8'
+
 def saveHT(htModel,filename):
     with open(filename, "wb") as f:
         htModel.prepared = False

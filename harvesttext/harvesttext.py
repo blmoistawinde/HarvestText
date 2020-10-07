@@ -3,28 +3,34 @@ import os
 import re
 import json
 import numpy as np
-import scipy.special
 import pandas as pd
 import html
 import urllib
-from itertools import combinations
 import jieba
 import jieba.posseg as pseg
-from collections import defaultdict
-from .word_discoverer import WordDiscoverer
-from .sent_dict import SentDict
-from .resources import get_qh_sent_dict, get_baidu_stopwords
-from .texttile import TextTile
-from .entity_discoverer import NFLEntityDiscoverer, NERPEntityDiscover
-from .utils import sent_sim_textrank, sent_sim_cos
 import w3lib.html
 import logging
 import warnings
 from tqdm import tqdm
 from pypinyin import lazy_pinyin, pinyin
 from opencc import OpenCC
+from collections import defaultdict
+from .ent_network import EntNetworkMixin
+from .ent_retrieve import EntRetrieveMixin
+from .parsing import ParsingMixin
+from .sentiment import SentimentMixin
+from .summary import SummaryMixin
+from .word_discover import WordDiscoverMixin
+from .resources import get_baidu_stopwords
 
-class HarvestText:
+class HarvestText(EntNetworkMixin, EntRetrieveMixin, ParsingMixin, SentimentMixin, SummaryMixin, WordDiscoverMixin):
+    """
+    主模块：
+    - 主要保留了与实体分词、分句，预处理相关的代码
+    - 还有存取、状态管理等基础代码
+    - 其他功能在各个mixin里面
+    - 主模块的功能是会被各个子模块最频繁调用的，也体现了本库以实体为核心，基于实体展开分析或改进算法的理念
+    """
     def __init__(self, standard_name=False, language='zh_CN'):
         self.standard_name = standard_name  # 是否使用连接到的实体名来替换原文
         self.entity_types = set()
@@ -46,9 +52,17 @@ class HarvestText:
         with open(pwd + "/resources/pinyin_adjlist.json", "r", encoding="utf-8") as f:
             self.pinyin_adjlist = json.load(f)
         self.language = language
-    #
-    # 实体分词模块
-    #
+        if language == "en":
+            try:
+                nltk.data.find('taggers/averaged_perceptron_tagger')
+            except:
+                nltk.download('averaged_perceptron_tagger')
+            try:
+                nltk.data.find('taggers/universal_tagset')
+            except:
+                nltk.download('universal_tagset')
+            
+
     def build_trie(self, new_word, entity, entity_type):
         type0 = "#%s#" % entity_type
         if not type0 in self.entity_types:
@@ -104,6 +118,15 @@ class HarvestText:
                     if entity0 == entity:
                         trie_node["leaf"].remove((entity0, type0))
                         break
+
+    def _add_entities(self, type_entity_mention_dict):
+        for type0 in type_entity_mention_dict:
+            entity_mention_dict0 = type_entity_mention_dict[type0]
+            for entity0 in entity_mention_dict0:
+                mentions = entity_mention_dict0[entity0]
+                for mention0 in mentions:
+                    self.build_trie(mention0, entity0, type0)
+        self.prepare()
 
     def add_entities(self, entity_mention_dict=None, entity_type_dict=None, override=False, load_path=None):
         '''登录的实体信息到ht，或者从save_entities保存的文件中读取（如果指定了load_path）
@@ -180,14 +203,40 @@ class HarvestText:
         self.type_entity_mention_dict = type_entity_mention_dict
         self._add_entities(type_entity_mention_dict)
 
-    def _add_entities(self, type_entity_mention_dict):
-        for type0 in type_entity_mention_dict:
-            entity_mention_dict0 = type_entity_mention_dict[type0]
-            for entity0 in entity_mention_dict0:
-                mentions = entity_mention_dict0[entity0]
-                for mention0 in mentions:
-                    self.build_trie(mention0, entity0, type0)
-        self.prepare()
+    def add_new_words(self, new_words):
+        for word in new_words:
+            self.build_trie(word, word, "新词")
+            self.entity_mention_dict[word] = set([word])
+            self.entity_type_dict[word] = "新词"
+            if word not in self.type_entity_mention_dict["新词"]:
+                self.type_entity_mention_dict["新词"][word] = set([word])
+            else:
+                self.type_entity_mention_dict["新词"][word].add(word)
+        self.check_prepared()
+
+    def add_new_mentions(self, entity_mention_dict):  # 添加链接到已有实体的新别称，一般在新词发现的基础上筛选得到
+        for entity0 in entity_mention_dict:
+            type0 = self.entity_type_dict[entity0]
+            for mention0 in entity_mention_dict[entity0]:
+                self.entity_mention_dict[entity0].add(mention0)
+                self.build_trie(mention0, entity0, type0)
+            self.type_entity_mention_dict[type0][entity0] = self.entity_mention_dict[entity0]
+        self.check_prepared()
+
+    def add_new_entity(self, entity0, mention0=None, type0="添加词"):
+        if mention0 is None:
+            mention0 = entity0
+        self.entity_type_dict[entity0] = type0
+        if entity0 in self.entity_mention_dict:
+            self.entity_mention_dict[entity0].add(mention0)
+        else:
+            self.entity_mention_dict[entity0] = set([mention0])
+        self.build_trie(mention0, entity0, type0)
+        if entity0 not in self.type_entity_mention_dict[type0]:
+            self.type_entity_mention_dict[type0][entity0] = set([mention0])
+        else:
+            self.type_entity_mention_dict[type0][entity0].add(mention0)
+        self.check_prepared()
 
     def prepare(self):
         self.prepared = True
@@ -636,77 +685,6 @@ class HarvestText:
         self.type_entity_mention_dict = type_entity_mention_dict
         self._add_entities(type_entity_mention_dict)
 
-    def entity_discover(self, text, return_count=False, method="NFL", min_count=5, pinyin_tolerance=0, **kwargs):
-        """无监督地从较大量文本中发现实体的类别和多个同义mention。建议对千句以上的文本来挖掘，并且文本的主题比较集中。
-            效率：在测试环境下处理一个约10000句的时间大约是20秒。另一个约200000句的语料耗时2分半
-            精度：算法准确率不高，但是可以初步聚类，建议先save_entities后, 再进行手动进行调整，然后load_entities再用于进一步挖掘
-
-            ref paper: Mining Entity Synonyms with Efficient Neural Set Generation(https://arxiv.org/abs/1811.07032v1)
-
-        :param text: string or list of string
-        :param return_count: (default False) 是否再返回每个mention的出现次数
-        :param method: 使用的算法， 目前可选 "NFL" (NER+Fasttext+Louvain+模式修复，基于语义和规则发现同义实体，但可能聚集过多错误实体), "NERP"(NER+模式修复, 仅基于规则发现同义实体)
-        :param min_count: (default 5) mininum freq of word to be included
-        :param pinyin_tolerance: {None, 0, 1} 合并拼音相同(取0时)或者差别只有一个(取1时)的候选词到同一组实体，默认使用(0)
-        :param kwargs: 根据算法决定的参数，目前, "NERP"不需要额外参数，而"NFL"可接受的额外参数有：
-
-            emb_dim: (default 50) fasttext embedding's dimensions
-
-            threshold: (default 0.98) [比较敏感，调参重点]larger for more entities, threshold for add an edge between 2 entities if cos_dim exceeds
-
-            ft_iters: (default 20) larger for more entities, num of iterations used by fasttext
-
-            use_subword: (default True) whether to use fasttext's subword info
-
-            min_n: (default 1) min length of used subword
-
-            max_n: (default 4) max length of used subword
-
-        :return: entity_mention_dict, entity_type_dict
-        """
-        text = text if type(text) == str else "\n".join(text)
-        method = method.upper()
-        assert method in {"NFL", "NERP"}
-        # discover candidates with NER
-        print("Doing NER")
-        sent_words = []
-        type_entity_dict = defaultdict(set)
-        entity_count = defaultdict(int)
-        wd_count = defaultdict(int)
-        for sent in tqdm(self.cut_sentences(text)):
-            NERs0, possegs = self.named_entity_recognition(sent, return_posseg=True)
-            sent_wds0 = []
-            for wd, pos in possegs:
-                if wd in NERs0:
-                    zh_pos = NERs0[wd]
-                    entity_name = wd.lower() + "_" + zh_pos
-                    type_entity_dict[zh_pos].add(entity_name)
-                    sent_wds0.append(entity_name)
-                    entity_count[entity_name] += 1
-                else:
-                    sent_wds0.append(wd)
-                    wd_count[wd] += 1
-            sent_words.append(sent_wds0)
-
-        entity_count = pd.Series(entity_count)
-        entity_count = entity_count[entity_count >= min_count]
-        pop_words_cnt = {wd:cnt for wd, cnt in wd_count.items() if cnt >= min_count}
-        id2word = entity_count.index.tolist()
-        word2id = {wd: i for (i, wd) in enumerate(id2word)}
-
-        type_entity_dict2 = {k: list(v) for k, v in type_entity_dict.items()}
-        if method == "NFL":
-            discoverer = NFLEntityDiscoverer(sent_words, type_entity_dict2, entity_count, pop_words_cnt, word2id, id2word,
-                                             min_count, pinyin_tolerance, self.pinyin_adjlist, **kwargs)
-        elif method == "NERP":
-            discoverer = NERPEntityDiscover(sent_words, type_entity_dict2, entity_count, pop_words_cnt, word2id, id2word,
-                                            min_count, pinyin_tolerance, self.pinyin_adjlist, **kwargs)
-        entity_mention_dict, entity_type_dict = discoverer.entity_mention_dict, discoverer.entity_type_dict
-        mention_count = discoverer.mention_count         # 新添加的mention的count在discoverer里更新
-        if return_count:
-            return entity_mention_dict, entity_type_dict, mention_count
-        else:
-            return entity_mention_dict, entity_type_dict
 
     def cut_sentences(self, para, drop_empty_line=True, strip=True, deduplicate=False):
         '''cut_sentences
@@ -742,71 +720,6 @@ class HarvestText:
             if drop_empty_line:
                 sentences = [sent for sent in sentences if len(sent.strip()) > 0]
             return sentences
-
-    def cut_paragraphs(self, text, num_paras=None, block_sents=3, std_weight=0.5,
-                       align_boundary=True, stopwords='baidu', remove_puncts=True,
-                       seq_chars=-1, **kwargs):
-        '''
-
-        :param text:
-        :param num_paras: (默认为None)可以手动设置想要划分的段落数，也可以保留默认值None，让算法自动确定
-        :param block_sents: 算法的参数，将几句句子分为一个block。一般越大，算法自动划分的段落越少
-        :param std_weight: 算法的参数。一般越大，算法自动划分的段落越多
-        :param align_boundary: 新划分的段落是否要与原有的换行处对齐
-        :param stopwords: 字符串列表/元组/集合，或者'baidu'为默认百度停用词，在算法中引入的停用词，一般能够提升准确度
-        :param remove_puncts: （默认为True）是否在算法中去除标点符号，一般能够提升准确度
-        :param seq_chars: （默认为-1）如果设置为>=1的值，则以包含这个数量的字符为基本单元，代替默认的句子。
-        :param **kwargs: passed to ht.cut_sentences, like deduplicate
-        :return:
-        '''
-        if num_paras is not None:
-            assert num_paras > 0, "Should give a positive number of num_paras"
-        assert stopwords == 'baidu' or (hasattr(stopwords, '__iter__') and type(stopwords) != str) 
-        stopwords = get_baidu_stopwords() if stopwords == 'baidu' else stopwords
-        if seq_chars < 1:
-            cut_seqs = lambda x: self.cut_sentences(x, **kwargs)
-        else:
-            seq_chars = int(seq_chars)
-            def _cut_seqs(text, len0, strip=True, deduplicate=False):
-                if deduplicate:
-                    text = re.sub(r"([。！？\!\?])\1+", r"\1", text)
-                if strip:
-                    text = text.strip()
-                seqs = [text[i:i+len0] for i in range(0, len(text), len0)]
-                return seqs
-            cut_seqs = lambda x: _cut_seqs(x, seq_chars, **kwargs)
-        
-        if align_boundary:
-            paras = [para.strip() for para in text.split("\n") if len(para.strip()) > 0]
-            if num_paras is not None:
-                # assert num_paras <= len(paras), "The new segmented paragraphs must be no less than the original ones"
-                if num_paras >= len(paras):
-                    return paras
-            original_boundary_ids = []
-            sentences = []
-            for para in paras:
-                sentences.extend(cut_seqs(para))
-                original_boundary_ids.append(len(sentences))
-        else:
-            original_boundary_ids = None
-            sentences = cut_seqs(text, **kwargs)
-        # with entity resolution, can better decide similarity
-        if remove_puncts:
-            allpuncs = re.compile(
-                r"[，\_《。》、？；：‘’＂“”【「】」、·！@￥…（）—\,\<\.\>\/\?\;\:\'\"\[\]\{\}\~\`\!\@\#\$\%\^\&\*\(\)\-\=\+]")
-            sent_words = [re.sub(allpuncs, "",
-                                 self.seg(sent, standard_name=True, stopwords=stopwords, return_sent=True)
-                                 ).split()
-                          for sent in sentences]
-        else:
-            sent_words = [self.seg(sent, standard_name=True, stopwords=stopwords)
-                          for sent in sentences]
-        texttiler = TextTile()
-        predicted_boundary_ids = texttiler.cut_paragraphs(sent_words, num_paras, block_sents, std_weight,
-                                                          align_boundary, original_boundary_ids)
-        jointer = " " if (self.language == 'en' and seq_chars > 1) else ""
-        predicted_paras = [jointer.join(sentences[l:r]) for l, r in zip([0]+predicted_boundary_ids[:-1], predicted_boundary_ids)]
-        return predicted_paras
 
     def clean_text(self, text, remove_url=True, email=True, weibo_at=True, stop_terms=("转发微博",),
                    emoji=True, weibo_topic=False, deduplicate_space=True,
@@ -869,564 +782,12 @@ class HarvestText:
                 text = text.replace(x, "")
         if remove_puncts:
             allpuncs = re.compile(
-                r"[，\_《。》、？；：‘’＂“”【「】」、·！@￥…（）—\,\<\.\>\/\?\;\:\'\"\[\]\{\}\~\`\!\@\#\$\%\^\&\*\(\)\-\=\+]")
+                r"[，\_《。》、？；：‘’＂“”【「】」·！@￥…（）—\,\<\.\>\/\?\;\:\'\"\[\]\{\}\~\`\!\@\#\$\%\^\&\*\(\)\-\=\+]")
             text = re.sub(allpuncs, "", text)
 
         return text.strip()
-
-    def named_entity_recognition(self, sent, standard_name=False, return_posseg=False):
-        '''利用pyhanlp的命名实体识别，找到句子中的（人名，地名，机构名，其他专名）实体。harvesttext会预先链接已知实体
-
-        :param sent: string, 文本
-        :param standard_name: bool, 是否把连接到的已登录转化为标准名
-        :param return_posseg: bool, 是否返回包括命名实体识别的，带词性分词结果
-        :param book: bool, 预先识别
-        :return: entity_type_dict: 发现的命名实体信息，字典 {实体名: 实体类型}
-            (return_posseg=True时) possegs: list of (单词, 词性)
-        '''
-        from pyhanlp import HanLP, JClass
-        if not self.hanlp_prepared:
-            self.hanlp_prepare()
-        self.standard_name = standard_name
-        entities_info = self.entity_linking(sent)
-        sent2 = self.decoref(sent, entities_info)
-        StandardTokenizer = JClass("com.hankcs.hanlp.tokenizer.StandardTokenizer")
-        StandardTokenizer.SEGMENT.enableAllNamedEntityRecognize(True)
-        entity_type_dict = {}
-        try:
-            possegs = []
-            for x in StandardTokenizer.segment(sent2):
-                # 三种前缀代表：人名（nr），地名（ns），机构名（nt）
-                tag0 = str(x.nature)
-                if tag0.startswith("nr"):
-                    entity_type_dict[x.word] = "人名"
-                elif tag0.startswith("ns"):
-                    entity_type_dict[x.word] = "地名"
-                elif tag0.startswith("nt"):
-                    entity_type_dict[x.word] = "机构名"
-                elif tag0.startswith("nz"):
-                    entity_type_dict[x.word] = "其他专名"
-                possegs.append((x.word, tag0))
-        except:
-            pass
-        if return_posseg:
-            return entity_type_dict, possegs
-        else:
-            return entity_type_dict
-    def dependency_parse(self, sent, standard_name=False, stopwords=None):
-        '''依存句法分析，调用pyhanlp的接口，并且融入了harvesttext的实体识别机制。不保证高准确率。
-
-        :param sent:
-        :param standard_name:
-        :param stopwords:
-        :return: arcs：依存弧,列表中的列表。
-            [[词语id,词语字面值或实体名(standard_name控制),词性，依存关系，依存子词语id] for 每个词语]
-        '''
-        from pyhanlp import HanLP, JClass
-        if not self.hanlp_prepared:
-            self.hanlp_prepare()
-        self.standard_name = standard_name
-        entities_info = self.entity_linking(sent)
-        sent2 = self.decoref(sent, entities_info)
-        # [word.ID-1, word.LEMMA, word.POSTAG, word.DEPREL ,word.HEAD.ID-1]
-        arcs = []
-        i = 0
-        sentence = HanLP.parseDependency(sent2)
-        for word in sentence.iterator():
-            word0, tag0 = word.LEMMA, word.POSTAG
-            if stopwords and word0 in stopwords:
-                continue
-            if word0 in self.entity_types:
-                if self.standard_name:
-                    word0 = entities_info[i][1][0]  # 使用链接的实体
-                else:
-                    l, r = entities_info[i][0]  # 或使用原文
-                    word0 = sent[l:r]
-                tag0 = entities_info[i][1][1][1:-1]
-                i += 1
-            arcs.append([word.ID-1, word0, tag0, word.DEPREL, word.HEAD.ID-1])
-        return arcs
-
-    def triple_extraction(self, sent, standard_name=False, stopwords=None, expand = "all"):
-        '''利用主谓宾等依存句法关系，找到句子中有意义的三元组。
-        很多代码参考：https://github.com/liuhuanyong/EventTriplesExtraction
-        不保证高准确率。
-
-        :param sent:
-        :param standard_name:
-        :param stopwords:
-        :param expand: 默认"all"：扩展所有主谓词，"exclude_entity"：不扩展已知实体，可以保留标准的实体名，用于链接。"None":不扩展
-        :return:
-        '''
-        arcs = self.dependency_parse(sent, standard_name, stopwords)
-
-        '''对找出的主语或者宾语进行扩展'''
-        def complete_e(words, postags, child_dict_list, word_index):
-            if expand == "all" or (expand == "exclude_entity" and "#"+postags[word_index]+"#" not in self.entity_types):
-                child_dict = child_dict_list[word_index]
-                prefix = ''
-                if '定中关系' in child_dict:
-                    for i in range(len(child_dict['定中关系'])):
-                        prefix += complete_e(words, postags, child_dict_list, child_dict['定中关系'][i])
-                postfix = ''
-                if postags[word_index] == 'v':
-                    if '动宾关系' in child_dict:
-                        postfix += complete_e(words, postags, child_dict_list, child_dict['动宾关系'][0])
-                    if '主谓关系' in child_dict:
-                        prefix = complete_e(words, postags, child_dict_list, child_dict['主谓关系'][0]) + prefix
-
-                return prefix + words[word_index] + postfix
-            elif expand == "None":
-                return words[word_index]
-            else:            # (expand == "exclude_entity" and "#"+postags[word_index]+"#" in self.entity_types)
-                return words[word_index]
-
-
-        words, postags = ["" for i in range(len(arcs))], ["" for i in range(len(arcs))]
-        child_dict_list = [defaultdict(list) for i in range(len(arcs))]
-        for i, format_parse in enumerate(arcs):
-            id0, words[i], postags[i], rel, headID = format_parse
-            child_dict_list[headID][rel].append(i)
-        svos = []
-        for index in range(len(postags)):
-            # 使用依存句法进行抽取
-            if postags[index]:
-                # 抽取以谓词为中心的事实三元组
-                child_dict = child_dict_list[index]
-                # 主谓宾
-                if '主谓关系' in child_dict and '动宾关系' in child_dict:
-                    r = words[index]
-                    e1 = complete_e(words, postags, child_dict_list, child_dict['主谓关系'][0])
-                    e2 = complete_e(words, postags, child_dict_list, child_dict['动宾关系'][0])
-                    svos.append([e1, r, e2])
-
-                # 定语后置，动宾关系
-                relation = arcs[index][-2]
-                head = arcs[index][-1]
-                if relation == '定中关系':
-                    if '动宾关系' in child_dict:
-                        e1 = complete_e(words, postags, child_dict_list, head)
-                        r = words[index]
-                        e2 = complete_e(words, postags, child_dict_list, child_dict['动宾关系'][0])
-                        temp_string = r + e2
-                        if temp_string == e1[:len(temp_string)]:
-                            e1 = e1[len(temp_string):]
-                        if temp_string not in e1:
-                            svos.append([e1, r, e2])
-                # 含有介宾关系的主谓动补关系
-                if '主谓关系' in child_dict and '动补结构' in child_dict:
-                    e1 = complete_e(words, postags, child_dict_list, child_dict['主谓关系'][0])
-                    CMP_index = child_dict['动补结构'][0]
-                    r = words[index] + words[CMP_index]
-                    if '介宾关系' in child_dict_list[CMP_index]:
-                        e2 = complete_e(words, postags, child_dict_list, child_dict_list[CMP_index]['介宾关系'][0])
-                        svos.append([e1, r, e2])
-        return svos
 
     def clear(self):
         self.deprepare()
         self.__init__()
 
-    #
-    # 新词发现模块
-    #
-    def word_discover(self, doc, threshold_seeds=[], auto_param=True,
-                      excluding_types=[], excluding_words='baidu_stopwords',  # 可以排除已经登录的某些种类的实体，或者某些指定词
-                      max_word_len=5, min_freq=0.00005, min_entropy=1.4, min_aggregation=50,
-                      ent_threshold="both", mem_saving=None, sort_by='freq'):
-        '''新词发现，基于 http://www.matrix67.com/blog/archives/5044 实现及微调
-
-        :param doc: (string or list) 待进行新词发现的语料，如果是列表的话，就会自动用换行符拼接
-        :param threshold_seeds: list of string, 设定能接受的“质量”最差的种子词，更差的词语将会在新词发现中被过滤
-        :param auto_param: bool, 使用默认的算法参数
-        :param excluding_types: list of str, 设定要过滤掉的特定词性或已经登录到ht的实体类别
-        :param excluding_words: list of str, 设定要过滤掉的特定词
-        :param max_word_len: 允许被发现的最长的新词长度
-        :param min_freq: 被发现的新词，在给定文本中需要达到的最低频率
-        :param min_entropy: 被发现的新词，在给定文本中需要达到的最低左右交叉熵
-        :param min_aggregation: 被发现的新词，在给定文本中需要达到的最低凝聚度
-        :param ent_threshold: "both": (默认)在使用左右交叉熵进行筛选时，两侧都必须超过阈值; "avg": 两侧的平均值达到阈值即可
-        :param mem_saving: bool or None, 采用一些过滤手段来减少内存使用，但可能影响速度。如果不指定，对长文本自动打开，而对短文本不使用
-        :param sort_by: 以下string之一: {'freq': 词频, 'score': 综合分数, 'agg':凝聚度} 按照特定指标对得到的词语信息排序，默认使用词频
-        :return: info: 包含新词作为index, 以及对应各项指标的DataFrame
-        '''
-        if type(doc) != str:
-            doc = "\n".join(doc)
-        # 采用经验参数，此时后面的参数设置都无效
-        if auto_param:  # 根据自己的几个实验确定的参数估计值，没什么科学性，但是应该能得到还行的结果
-            length = len(doc)
-            min_entropy = np.log(length) / 10
-            min_freq = min(0.00005, 20.0 / length)
-            min_aggregation = np.sqrt(length) / 15
-            mem_saving = bool(length > 300000) if mem_saving is None else mem_saving
-            # ent_threshold: 确定左右熵的阈值对双侧都要求"both"，或者只要左右平均值达到"avg"
-            # 对于每句话都很极短的情况（如长度<8），经常出现在左右边界的词语可能难以被确定，这时ent_threshold建议设为"avg"
-        mem_saving = False if mem_saving is None else mem_saving
-
-        try:
-            ws = WordDiscoverer(doc, max_word_len, min_freq, min_entropy, min_aggregation, ent_threshold, mem_saving)
-        except Exception as e:
-            logging.log(logging.ERROR, str(e))
-            info = {"text": [], "freq": [], "left_ent": [], "right_ent": [], "agg": []}
-            info = pd.DataFrame(info)
-            info = info.set_index("text")
-            return info
-
-        if len(excluding_types) > 0:
-            if "#" in list(excluding_types)[0]:  # 化为无‘#’标签
-                excluding_types = [x[1:-1] for x in excluding_types]
-            ex_mentions = set(x for enty in self.entity_mention_dict
-                           if enty in self.entity_type_dict and
-                           self.entity_type_dict[enty] in excluding_types
-                           for x in self.entity_mention_dict[enty])
-        else:
-            ex_mentions = set()
-        assert excluding_words == 'baidu_stopwords' or (hasattr(excluding_words, '__iter__') and type(excluding_words) != str) 
-        if excluding_words == 'baidu_stopwords':
-            ex_mentions |= get_baidu_stopwords()
-        else:
-            ex_mentions |= set(excluding_words)
-
-        info = ws.get_df_info(ex_mentions)
-
-        # 利用种子词来确定筛选优质新词的标准，种子词中最低质量的词语将被保留（如果一开始就被找到的话）
-        if len(threshold_seeds) > 0:
-            min_score = 100000
-            for seed in threshold_seeds:
-                if seed in info.index:
-                    min_score = min(min_score, info.loc[seed, "score"])
-            if (min_score >= 100000):
-                min_score = 0
-            else:
-                min_score *= 0.9  # 留一些宽松的区间
-                info = info[info["score"] > min_score]
-        if sort_by:
-            info.sort_values(by=sort_by, ascending=False, inplace=True)
-
-        return info
-
-    def add_new_words(self, new_words):
-        for word in new_words:
-            self.build_trie(word, word, "新词")
-            self.entity_mention_dict[word] = set([word])
-            self.entity_type_dict[word] = "新词"
-            if word not in self.type_entity_mention_dict["新词"]:
-                self.type_entity_mention_dict["新词"][word] = set([word])
-            else:
-                self.type_entity_mention_dict["新词"][word].add(word)
-        self.check_prepared()
-
-    def add_new_mentions(self, entity_mention_dict):  # 添加链接到已有实体的新别称，一般在新词发现的基础上筛选得到
-        for entity0 in entity_mention_dict:
-            type0 = self.entity_type_dict[entity0]
-            for mention0 in entity_mention_dict[entity0]:
-                self.entity_mention_dict[entity0].add(mention0)
-                self.build_trie(mention0, entity0, type0)
-            self.type_entity_mention_dict[type0][entity0] = self.entity_mention_dict[entity0]
-        self.check_prepared()
-
-    def add_new_entity(self, entity0, mention0=None, type0="添加词"):
-        if mention0 is None:
-            mention0 = entity0
-        self.entity_type_dict[entity0] = type0
-        if entity0 in self.entity_mention_dict:
-            self.entity_mention_dict[entity0].add(mention0)
-        else:
-            self.entity_mention_dict[entity0] = set([mention0])
-        self.build_trie(mention0, entity0, type0)
-        if entity0 not in self.type_entity_mention_dict[type0]:
-            self.type_entity_mention_dict[type0][entity0] = set([mention0])
-        else:
-            self.type_entity_mention_dict[type0][entity0].add(mention0)
-        self.check_prepared()
-
-    def find_entity_with_rule(self, text, rulesets=[], add_to_dict=True, type0="添加词"):
-        '''利用规则从分词结果中的词语找到实体，并可以赋予相应的类型再加入实体库
-
-        :param text: string, 一段文本
-        :param rulesets: list of (tuple of rules or single rule) from match_patterns,
-            list中包含多个规则，满足其中一种规则的词就认为属于这个type
-            而每种规则由tuple或单个条件(pattern)表示，一个词必须满足其中的一个或多个条件。
-        :param add_to_dict: 是否把找到的结果直接加入词典
-        :param type0: 赋予满足条件的词语的实体类型, 仅当add_to_dict时才有意义
-        :return: found_entities
-
-        '''
-        found_entities = set()
-        for word in self.seg(text):
-            for ruleset in rulesets:  # 每个ruleset是或关系，只要满足一个就添加并跳过其他
-                toAdd = True
-                if type(ruleset) == type((1, 2)):  # tuple
-                    for pattern0 in ruleset:
-                        if not pattern0(word):
-                            toAdd = False
-                            break
-                else:  # single rule
-                    pattern0 = ruleset
-                    if not pattern0(word):
-                        toAdd = False
-                if toAdd:
-                    found_entities.add(word)
-                    break
-        if add_to_dict:
-            for entity0 in found_entities:
-                self.add_new_entity(entity0, entity0, type0)
-            self.prepare()
-        return found_entities
-
-    #
-    # 情感分析模块
-    #
-    def build_sent_dict(self, sents, method="PMI", min_times=5, scale="None",
-                        pos_seeds=None, neg_seeds=None, stopwords=None):
-        '''利用种子词，构建情感词典
-
-        :param sents: list of string, 一般建议为句子，是计算共现PMI的基本单元
-        :param method: "PMI", 使用的算法，目前仅支持PMI
-        :param min_times: int, 默认为5， 在所有句子中出现次数少于这个次数的词语将被过滤
-        :param scale: {"None","0-1","+-1"}, 默认为"None"，否则将对情感值进行变换
-            若为"0-1"，按照最大为1，最小为0进行线性伸缩，0.5未必是中性
-            若为"+-1", 在正负区间内分别伸缩，保留0作为中性的语义
-        :param pos_seeds: list of string, 积极种子词，如不填写将默认采用清华情感词典
-        :param neg_seeds: list of string, 消极种子词，如不填写将默认采用清华情感词典
-        :param stopwords: list of string, stopwords词，如不填写将不使用
-        :return: sent_dict: dict,可以查询单个词语的情感值
-        '''
-        if pos_seeds is None and neg_seeds is None:
-            sdict = get_qh_sent_dict()
-            pos_seeds, neg_seeds = sdict["pos"], sdict["neg"]
-        docs = [set(self.seg(sent)) for sent in sents]
-        if not stopwords is None:
-            stopwords = set(stopwords)
-            for i in range(len(docs)):
-                docs[i] = docs[i] - stopwords
-            docs = list(filter(lambda x: len(x) > 0, docs))
-        self.sent_dict = SentDict(docs, method, min_times, scale, pos_seeds, neg_seeds)
-        return self.sent_dict.sent_dict
-
-    def analyse_sent(self, sent, avg=True):
-        """输入句子，输出其情感值，默认使用句子中，在情感词典中的词语的情感值的平均来计算
-
-        :param sent: string, 句子
-        :param avg: (default True) 是否使用平均值计算句子情感值
-        :return: float情感值(if avg == True), 否则为词语情感值列表
-        """
-        return self.sent_dict.analyse_sent(self.seg(sent), avg)
-
-    #
-    # 实体检索模块
-    #
-    def build_index(self, docs, with_entity=True, with_type=True):
-        inv_index = defaultdict(set)
-        for i, sent in enumerate(docs):
-            entities_info = self.entity_linking(sent)
-            for span, (entity, type0) in entities_info:
-                if with_entity:
-                    inv_index[entity].add(i)
-                if with_type:
-                    inv_index[type0].add(i)
-        return inv_index
-
-    def get_entity_counts(self, docs, inv_index, used_type=[]):
-        if len(used_type) > 0:
-            entities = iter(x for x in self.entity_type_dict
-                            if self.entity_type_dict[x] in used_type)
-        else:
-            entities = self.entity_type_dict.keys()
-        cnt = {enty: len(inv_index[enty]) for enty in entities if enty in inv_index}
-        return cnt
-
-    def search_entity(self, query, docs, inv_index):
-        words = query.split()
-        if len(words) > 0:
-            ids = inv_index[words[0]]
-            for word in words[1:]:
-                ids = ids & inv_index[word]
-            np_docs = np.array(docs)[list(ids)]
-            return np_docs.tolist()
-        else:
-            return []
-
-    #
-    # 文本摘要模块
-    #
-    def get_summary(self, docs, topK=5, stopwords=None, with_importance=False, standard_name=True,
-                    maxlen=None, avoid_repeat=False):
-        '''使用Textrank算法得到文本中的关键句
-
-        :param docs: str句子列表
-        :param topK: 选取几个句子, 如果设置了maxlen，则优先考虑长度
-        :param stopwords: 在算法中采用的停用词
-        :param with_importance: 返回时是否包括算法得到的句子重要性
-        :param standard_name: 如果有entity_mention_list的话，在算法中正规化实体名，一般有助于提升算法效果
-        :param maxlen: 设置得到的摘要最长不超过多少字数，如果已经达到长度限制但未达到topK句也会停止
-        :param avoid_repeat: 使用MMR principle惩罚与已经抽取的摘要重复的句子，避免重复
-        :return: 句子列表，或者with_importance=True时，（句子，分数）列表
-        '''
-        assert topK > 0
-        import networkx as nx
-        maxlen = float('inf') if maxlen is None else maxlen
-        # 使用standard_name,相似度可以基于实体链接的结果计算而更加准确
-        sents = [self.seg(doc.strip(), standard_name=standard_name, stopwords=stopwords) for doc in docs]
-        sents = [sent for sent in sents if len(sent) > 0]
-        G = nx.Graph()
-        for u, v in combinations(range(len(sents)), 2):
-            G.add_edge(u, v, weight=sent_sim_textrank(sents[u], sents[v]))
-
-        pr = nx.pagerank_scipy(G)
-        pr_sorted = sorted(pr.items(), key=lambda x: x[1], reverse=True)
-        if not avoid_repeat:
-            ret = []
-            curr_len = 0
-            for i, imp in pr_sorted[:topK]:
-                curr_len += len(docs[i])
-                if curr_len > maxlen: break
-                ret.append((docs[i], imp) if with_importance else docs[i])
-            return [ ]
-        else:
-            assert topK <= len(sents)
-            ret = []
-            curr_len = 0
-            curr_sumy_words = []
-            candidate_ids = list(range(len(sents)))
-            i, imp = pr_sorted[0]
-            curr_len += len(docs[i])
-            if curr_len > maxlen:
-                return ret
-            ret.append((docs[i], imp) if with_importance else docs[i])
-            curr_sumy_words.extend(sents[i])
-            candidate_ids.remove(i)
-            for iter in range(topK-1):
-                importance = [pr[i] for i in candidate_ids]
-                norm_importance = scipy.special.softmax(importance)
-                redundancy = np.array([sent_sim_cos(curr_sumy_words, sents[i]) for i in candidate_ids])
-                scores = 0.6*norm_importance - 0.4*redundancy
-                id_in_cands = np.argmax(scores)
-                i, imp = candidate_ids[id_in_cands], importance[id_in_cands]
-                curr_len += len(docs[i])
-                if curr_len > maxlen:
-                    return ret
-                ret.append((docs[i], imp) if with_importance else docs[i])
-                curr_sumy_words.extend(sents[i])
-                del candidate_ids[id_in_cands]
-            return ret
-
-    #
-    # 实体网络模块
-    #
-    def build_entity_graph(self, docs, min_freq=0, inv_index={}, used_types=[]):
-        import networkx as nx
-        G = nx.Graph()
-        links = {}
-        if len(inv_index) == 0:
-            for i, sent in enumerate(docs):
-                entities_info = self.entity_linking(sent)
-                if len(used_types) == 0:
-                    entities = set(entity for span, (entity, type0) in entities_info)
-                else:
-                    entities = set(entity for span, (entity, type0) in entities_info if type0[1:-1] in used_types)
-                for u, v in combinations(entities, 2):
-                    pair0 = tuple(sorted((u, v)))
-                    if pair0 not in links:
-                        links[pair0] = 1
-                    else:
-                        links[pair0] += 1
-        else:  # 已经有倒排文档，可以更快速检索
-            if len(used_types) == 0:
-                entities = self.entity_type_dict.keys()
-            else:
-                entities = iter(entity for (entity, type0) in self.entity_type_dict.items() if type0 in used_types)
-            for u, v in combinations(entities, 2):
-                pair0 = tuple(sorted((u, v)))
-                ids = inv_index[u] & inv_index[v]
-                if len(ids) > 0:
-                    links[pair0] = len(ids)
-        for (u, v) in links:
-            if links[(u, v)] >= min_freq:
-                G.add_edge(u, v, weight=links[(u, v)])
-        self.entity_graph = G
-        return G
-
-    def build_word_ego_graph(self, docs, word, standard_name=True, min_freq=0, other_min_freq=-1, stopwords=None):
-        '''根据文本和指定限定词，获得以限定词为中心的各词语的关系。
-        限定词可以是一个特定的方面（衣食住行这类文档），这样就可以从词语中心图中获得关于这个方面的简要信息
-
-        :param docs: 文本的列表
-        :param word: 限定词
-        :param standard_name: 把所有实体的指称化为标准实体名
-        :param stopwords: 需要过滤的停用词
-        :param min_freq: 作为边加入到图中的与中心词最小共现次数，用于筛掉可能过多的边
-        :param other_min_freq: 中心词以外词语关系的最小共现次数
-        :return: G（networxX中的Graph）
-
-        '''
-        import networkx as nx
-        G = nx.Graph()
-        links = {}
-        if other_min_freq == -1:
-            other_min_freq = min_freq
-        for doc in docs:
-            if stopwords:
-                words = set(x for x in self.seg(doc, standard_name=standard_name) if x not in stopwords)
-            else:
-                words = self.seg(doc, standard_name=standard_name)
-            if word in words:
-                for u, v in combinations(words, 2):
-                    pair0 = tuple(sorted((u, v)))
-                    if pair0 not in links:
-                        links[pair0] = 1
-                    else:
-                        links[pair0] += 1
-
-        used_nodes = set([word])  # 关系对中涉及的词语必须与实体有关（>= min_freq）
-        for (u, v) in links:
-            w = links[(u, v)]
-            if word in (u, v) and w >= min_freq:
-                used_nodes.add(v if word == u else u)
-                G.add_edge(u, v, weight=w)
-            elif w >= other_min_freq:
-                G.add_edge(u, v, weight=w)
-        G = G.subgraph(used_nodes).copy()
-        return G
-
-    def build_entity_ego_graph(self, docs, word, min_freq=0, other_min_freq=-1, inv_index={}, used_types=[]):
-        '''Entity only version of build_word_ego_graph()
-        '''
-        import networkx as nx
-        G = nx.Graph()
-        links = {}
-        if other_min_freq == -1:
-            other_min_freq = min_freq
-        if len(inv_index) != 0:
-            related_docs = self.search_entity(word, docs, inv_index)
-        else:
-            related_docs = []
-            for doc in docs:
-                entities_info = self.entity_linking(doc)
-                entities = [entity0 for [[l,r], (entity0,type0)] in entities_info]
-                if word in entities:
-                    related_docs.append(doc)
-
-        for i, sent in enumerate(related_docs):
-            entities_info = self.entity_linking(sent)
-            if len(used_types) == 0:
-                entities = set(entity for span, (entity, type0) in entities_info)
-            else:
-                entities = set(entity for span, (entity, type0) in entities_info if type0[1:-1] in used_types)
-            for u, v in combinations(entities, 2):
-                pair0 = tuple(sorted((u, v)))
-                if pair0 not in links:
-                    links[pair0] = 1
-                else:
-                    links[pair0] += 1
-
-        used_nodes = set([word])  # 关系对中涉及的词语必须与实体有关（>= min_freq）
-        for (u, v) in links:
-            w = links[(u, v)]
-            if word in (u, v) and w >= min_freq:
-                used_nodes.add(v if word == u else u)
-                G.add_edge(u, v, weight=w)
-            elif w >= other_min_freq:
-                G.add_edge(u, v, weight=w)
-        G = G.subgraph(used_nodes).copy()
-        return G

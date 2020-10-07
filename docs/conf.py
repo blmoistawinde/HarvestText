@@ -13,6 +13,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
+from harvesttext import __version__
 
 
 # -- Project information -----------------------------------------------------
@@ -22,7 +23,7 @@ copyright = '2020, blmoistawinde'
 author = 'blmoistawinde'
 
 # The full version, including alpha/beta/rc tags
-release = '0.7.4.2'
+release = __version__
 
 github_doc_root = 'https://github.com/blmoistawinde/HarvestText/tree/master/doc'
 

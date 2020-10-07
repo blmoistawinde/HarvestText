@@ -189,7 +189,7 @@ def linking_strategy():
 
 
 def find_with_rules():
-    from harvesttext.match_patterns import UpperFirst, AllEnglish, Contains, StartsWith, EndsWith
+    from harvesttext.algorithms.match_patterns import UpperFirst, AllEnglish, Contains, StartsWith, EndsWith
     # some more patterns is provided
     text0 = "我喜欢Python，因为requests库很适合爬虫"
     ht0 = HarvestText()

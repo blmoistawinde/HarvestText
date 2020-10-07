@@ -19,6 +19,7 @@ def get_qh_sent_dict():
     此资源被用于以下论文中:
     Jun Li and Maosong Sun, Experimental Study on Sentiment Classification of Chinese Review using Machine Learning Techniques, in Proceding of IEEE NLPKE 2007
     李军 中文评论的褒贬义分类实验研究 硕士论文 清华大学 2008
+
     :return: qh_sent_dict = {"pos":[words],"neg":[words]}
 
     """
@@ -30,22 +31,38 @@ def get_qh_sent_dict():
 
 def get_baidu_stopwords():
     """
-        获得百度停用词列表
-        来源，网上流传的版本：https://wenku.baidu.com/view/98c46383e53a580216fcfed9.html
-        包含了中英文常见词及部分标点符号
-        :return: stopwords: set of string
+    获得百度停用词列表
+    来源，网上流传的版本：https://wenku.baidu.com/view/98c46383e53a580216fcfed9.html
+    包含了中英文常见词及部分标点符号
 
-        """
+    :return: stopwords: set of string
+
+    """
     pwd = os.path.abspath(os.path.dirname(__file__))
     with open(pwd + "/resources/bd_stopwords.json", "r", encoding="utf-8") as f:
         stopwords = json.load(f)
     return set(stopwords)
+
+def get_nltk_en_stopwords():
+    """
+    来自nltk的英语停用词
+
+    :return: stopwords: set of string
+    """
+    import nltk
+    try:
+        nltk.data.find('corpora/stopwords')
+    except:
+        nltk.download('stopwords')
+    from nltk.corpus import stopwords
+    return set(stopwords.words('english'))
 
 def get_qh_typed_words(used_types = ['IT', '动物', '医药', '历史人名', '地名', '成语', '法律', '财经', '食物']):
     """
     THUOCL：清华大学开放中文词库
     http://thuocl.thunlp.org/
     IT	财经	成语	地名	历史名人	诗词	医学	饮食	法律	汽车	动物
+
     :param used_types:
     :return: typed_words: 字典，键为类型，值为该类的词语组成的set
 
@@ -62,6 +79,7 @@ def get_qh_typed_words(used_types = ['IT', '动物', '医药', '历史人名', '
 def get_sanguo():
     """
     获得三国演义原文
+
     :return: ["章节1文本","章节2文本",...]
 
     """
@@ -74,6 +92,7 @@ def get_sanguo_entity_dict():
     """
     获得三国演义中的人名、地名、势力名的知识库。
     自行搭建的简单版，一定有遗漏和错误，仅供参考使用
+
     :return: entity_mention_dict,entity_type_dict
 
     """
