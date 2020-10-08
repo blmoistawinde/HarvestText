@@ -7,7 +7,7 @@ Sow with little data seed, harvest much from a text field.
 ![GitHub stars](https://img.shields.io/github/stars/blmoistawinde/harvesttext?style=social) 
 ![PyPI - Python Version](https://img.shields.io/badge/python-3.6+-blue.svg) 
 ![GitHub](https://img.shields.io/github/license/mashape/apistatus.svg) 
-![Version](https://img.shields.io/badge/version-V0.7-red.svg)
+![Version](https://img.shields.io/badge/version-V0.8-red.svg)
 
 ## 用途
 HarvestText是一个专注无（弱）监督方法，能够整合领域知识（如类型，别名）对特定领域文本进行简单高效地处理和分析的库。适用于许多文本预处理和初步探索性分析任务，在小说分析，网络文本，专业文献等领域都有潜在应用价值。
@@ -478,6 +478,37 @@ Text summarization(避免重复)
 武磊和郜林，谁是中国最好的前锋？
 ```
 
+<a id="关键词抽取"> </a>
+
+### 关键词抽取
+
+目前提供包括`textrank`和HarvestText封装jieba并配置好参数和停用词的`jieba_tfidf`（默认）两种算法。
+
+示例(完整见[example](./examples/basics.py))：
+
+```python3
+# text为林俊杰《关键词》歌词
+print("《关键词》里的关键词")
+kwds = ht.extract_keywords(text, 5, method="jieba_tfidf")
+print("jieba_tfidf", kwds)
+kwds = ht.extract_keywords(text, 5, method="textrank")
+print("textrank", kwds)
+```
+
+```
+《关键词》里的关键词
+jieba_tfidf ['自私', '慷慨', '落叶', '消逝', '故事']
+textrank ['自私', '落叶', '慷慨', '故事', '位置']
+```
+
+[CSL.ipynb](./examples/kwd_benchmark/CSL.ipynb)提供了不同算法，以及本库的实现与[textrank4zh](https://github.com/letiantian/TextRank4ZH)的在[CSL数据集](https://github.com/CLUEbenchmark/CLUE#6-csl-%E8%AE%BA%E6%96%87%E5%85%B3%E9%94%AE%E8%AF%8D%E8%AF%86%E5%88%AB-keyword-recognition)上的比较。由于仅有一个数据集且数据集对于以上算法都很不友好，表现仅供参考。
+
+| 算法 | P@5 | R@5 | F@5 |
+| --- | --- | --- | --- |
+| textrank4zh | 0.0836 | 0.1174 | 0.0977 |
+| ht_textrank | 0.0955 | 0.1342 | 0.1116 |
+| ht_jieba_tfidf | **0.1035** | **0.1453** | **0.1209** |
+
 
 <a id="内置资源"> </a>
 
@@ -486,9 +517,11 @@ Text summarization(避免重复)
 现在本库内集成了一些资源，方便使用和建立demo。
 
 资源包括：
-- 褒贬义词典 清华大学 李军 整理自http://nlp.csai.tsinghua.edu.cn/site2/index.php/13-sms
-- 百度停用词词典 来自网络：https://wenku.baidu.com/view/98c46383e53a580216fcfed9.html
-- 领域词典 来自清华THUNLP： http://thuocl.thunlp.org/ 全部类型`['IT', '动物', '医药', '历史人名', '地名', '成语', '法律', '财经', '食物']`
+- `get_qh_sent_dict`: 褒贬义词典 清华大学 李军 整理自http://nlp.csai.tsinghua.edu.cn/site2/index.php/13-sms
+- `get_baidu_stopwords`: 百度停用词词典 来自网络：https://wenku.baidu.com/view/98c46383e53a580216fcfed9.html
+- `get_qh_typed_words`: 领域词典 来自清华THUNLP： http://thuocl.thunlp.org/ 全部类型`['IT', '动物', '医药', '历史人名', '地名', '成语', '法律', '财经', '食物']`
+- `get_english_senti_lexicon`: 英语情感词典
+- `get_jieba_dict`: （需要下载）jieba词频词典
 
 
 此外，还提供了一个特殊资源——《三国演义》，包括：
@@ -587,6 +620,21 @@ min_aggregation = np.sqrt(length) / 15
 
 具体的算法细节和参数含义，参考：http://www.matrix67.com/blog/archives/5044
 
+</details>
+<br/>
+
+<details><summary>使用结巴词典过滤旧词（展开查看）</summary>
+```
+from harvesttext.resources import get_jieba_dict
+jieba_dict = get_jieba_dict(min_freq=100)
+print("jiaba词典中的词频>100的词语数：", len(jieba_dict))
+text = "1979-1998-2020的喜宝们 我现在记忆不太好，大概是拍戏时摔坏了~有什么笔记都要当下写下来。前几天翻看，找着了当时记下的话.我觉得喜宝既不娱乐也不启示,但这就是生活就是人生,10/16来看喜宝吧"
+new_words_info = ht.word_discover(text, 
+                                    excluding_words=set(jieba_dict),       # 排除词典已有词语
+                                    exclude_number=True)                   # 排除数字（默认True）     
+new_words = new_words_info.index.tolist()
+print(new_words)                                                         # ['喜宝']
+```
 </details>
 <br/>
 
@@ -801,4 +849,6 @@ we imagine what we'll find, in another life.
 [ChineseWordSegmentation](https://github.com/Moonshile/ChineseWordSegmentation)
 
 [EventTriplesExtraction](https://github.com/liuhuanyong/EventTriplesExtraction)
+
+[textrank4ZH](https://github.com/letiantian/TextRank4ZH)
 

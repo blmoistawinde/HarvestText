@@ -139,7 +139,7 @@ class ParsingMixin:
         if num_paras is not None:
             assert num_paras > 0, "Should give a positive number of num_paras"
         assert stopwords == 'baidu' or (hasattr(stopwords, '__iter__') and type(stopwords) != str)
-        stopwords = get_baidu_stopwords() if stopwords == 'baidu' else stopwords
+        stopwords = get_baidu_stopwords() if stopwords == 'baidu' else set(stopwords)
         if seq_chars < 1:
             cut_seqs = lambda x: self.cut_sentences(x, **kwargs)
         else:

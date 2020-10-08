@@ -1,6 +1,7 @@
 #coding=utf-8
 import re
 from harvesttext import HarvestText
+
 ht = HarvestText()
 
 def new_word_discover():
@@ -398,29 +399,80 @@ def test_english():
     # for sent0 in sentences:
     #     print(sent0, ht_eng.analyse_sent(sent0))
 
-
+def jieba_dict_new_word():
+    from harvesttext.resources import get_jieba_dict
+    jieba_dict = get_jieba_dict(min_freq=100)
+    print("jiaba词典中的词频>100的词语数：", len(jieba_dict))
+    text = "1979-1998-2020的喜宝们 我现在记忆不太好，大概是拍戏时摔坏了~有什么笔记都要当下写下来。前几天翻看，找着了当时记下的话.我觉得喜宝既不娱乐也不启示,但这就是生活就是人生,10/16来看喜宝吧"
+    new_words_info = ht.word_discover(text, 
+                                      excluding_words=set(jieba_dict),       # 排除词典已有词语
+                                      exclude_number=True)                   # 排除数字（默认True）     
+    new_words = new_words_info.index.tolist()
+    print(new_words)                                                         # ['喜宝']
+    
+def extract_keywords():
+    text = """
+好好爱自己 就有人会爱你
+这乐观的说词
+幸福的样子 我感觉好真实
+找不到形容词
+沉默在掩饰 快泛滥的激情
+只剩下语助词
+有一种踏实 当你口中喊我名字
+落叶的位置 谱出一首诗
+时间在消逝 我们的故事开始
+这是第一次
+让我见识爱情 可以慷慨又自私
+你是我的关键词
+我不太确定 爱最好的方式
+是动词或名词
+很想告诉你 最赤裸的感情
+却又忘词
+聚散总有时 而哭笑也有时
+我不怕潜台词
+有一种踏实 是你心中有我名字
+落叶的位置 谱出一首诗
+时间在消逝 我们的故事开始
+这是第一次
+让我见识爱情 可以慷慨又自私
+你是我的关键词
+你藏在歌词 代表的意思
+是专有名词
+落叶的位置 谱出一首诗
+我们的故事 才正要开始
+这是第一次
+爱一个人爱得 如此慷慨又自私
+你是我的关键
+    """
+    print("《关键词》里的关键词")
+    kwds = ht.extract_keywords(text, 5, method="jieba_tfidf")
+    print("jieba_tfidf", kwds)
+    kwds = ht.extract_keywords(text, 5, method="textrank")
+    print("textrank", kwds)
 
 if __name__ == "__main__":
-    test_english()
-    new_word_discover()
-    new_word_register()
-    entity_segmentation()
-    sentiment_dict()
-    sentiment_dict_default()
-    entity_search()
-    text_summarization()
-    entity_network()
-    save_load_clear()
-    load_resources()
-    linking_strategy()
-    find_with_rules()
-    load_resources()
-    using_typed_words()
-    build_word_ego_graph()
-    entity_error_check()
-    depend_parse()
-    named_entity_recognition()
-    el_keep_all()
-    filter_el_with_rule()
-    clean_text()
-    cut_paragraph()
+    # test_english()
+    # new_word_discover()
+    # new_word_register()
+    # entity_segmentation()
+    # sentiment_dict()
+    # sentiment_dict_default()
+    # entity_search()
+    # text_summarization()
+    # entity_network()
+    # save_load_clear()
+    # load_resources()
+    # linking_strategy()
+    # find_with_rules()
+    # load_resources()
+    # using_typed_words()
+    # build_word_ego_graph()
+    # entity_error_check()
+    # depend_parse()
+    # named_entity_recognition()
+    # el_keep_all()
+    # filter_el_with_rule()
+    # clean_text()
+    # cut_paragraph()
+    # jieba_dict_new_word()
+    extract_keywords()

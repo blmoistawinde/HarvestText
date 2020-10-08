@@ -1,4 +1,7 @@
+import jieba
+import jieba.analyse
 import logging
+import networkx as nx
 import numpy as np
 import pandas as pd
 from collections import defaultdict
@@ -6,6 +9,7 @@ from tqdm import tqdm
 from .resources import get_baidu_stopwords
 from .algorithms.word_discoverer import WordDiscoverer
 from .algorithms.entity_discoverer import NFLEntityDiscoverer, NERPEntityDiscover
+from .algorithms.keyword import textrank
 
 class WordDiscoverMixin:
     """
@@ -18,7 +22,7 @@ class WordDiscoverMixin:
     def word_discover(self, doc, threshold_seeds=[], auto_param=True,
                       excluding_types=[], excluding_words='baidu_stopwords',  # 可以排除已经登录的某些种类的实体，或者某些指定词
                       max_word_len=5, min_freq=0.00005, min_entropy=1.4, min_aggregation=50,
-                      ent_threshold="both", mem_saving=None, sort_by='freq'):
+                      ent_threshold="both", mem_saving=None, sort_by='freq', exclude_number=True):
         '''新词发现，基于 http://www.matrix67.com/blog/archives/5044 实现及微调
 
         :param doc: (string or list) 待进行新词发现的语料，如果是列表的话，就会自动用换行符拼接
@@ -33,6 +37,7 @@ class WordDiscoverMixin:
         :param ent_threshold: "both": (默认)在使用左右交叉熵进行筛选时，两侧都必须超过阈值; "avg": 两侧的平均值达到阈值即可
         :param mem_saving: bool or None, 采用一些过滤手段来减少内存使用，但可能影响速度。如果不指定，对长文本自动打开，而对短文本不使用
         :param sort_by: 以下string之一: {'freq': 词频, 'score': 综合分数, 'agg':凝聚度} 按照特定指标对得到的词语信息排序，默认使用词频
+        :param exclude_number: （默认True）过滤发现的纯数字新词
         :return: info: 包含新词作为index, 以及对应各项指标的DataFrame
         '''
         if type(doc) != str:
@@ -72,7 +77,7 @@ class WordDiscoverMixin:
         else:
             ex_mentions |= set(excluding_words)
 
-        info = ws.get_df_info(ex_mentions)
+        info = ws.get_df_info(ex_mentions, exclude_number)
 
         # 利用种子词来确定筛选优质新词的标准，种子词中最低质量的词语将被保留（如果一开始就被找到的话）
         if len(threshold_seeds) > 0:
@@ -234,4 +239,66 @@ class WordDiscoverMixin:
             return entity_mention_dict, entity_type_dict, mention_count
         else:
             return entity_mention_dict, entity_type_dict
+    
+    def extract_keywords(self, text, topK, with_score=False, min_word_len=2, stopwords="baidu", allowPOS="default", method="jieba_tfidf", **kwargs):
+        """用各种算法抽取关键词（目前均为无监督），结合了ht的实体分词来提高准确率
 
+        目前支持的算法类型（及额外参数）：
+
+        - jieba_tfidf: （默认）jieba自带的基于tfidf的关键词抽取算法，idf统计信息来自于其语料库
+        - textrank: 基于textrank的关键词抽取算法
+            - block_type: 默认"doc"。 支持三种级别，"sent", "para", "doc"，每个block之间的临近词语不建立连边
+            - window: 默认2, 邻接的几个词语之内建立连边
+            - weighted: 默认False, 时候使用加权图计算textrank
+            - 构建词图时会过滤不符合min_word_len, stopwords, allowPOS要求的词语
+
+        :params text: 从中挖掘关键词的文档
+        :params topK: int, 从每个文档中抽取的关键词（最大）数量
+        :params with_score: bool, 默认False, 是否同时返回算法提供的分数（如果有的话）
+        :params min_word_len: 默认2, 被纳入关键词的词语不低于此长度
+        :param stopwords: 字符串列表/元组/集合，或者'baidu'为默认百度停用词，在算法中引入的停用词，一般能够提升准确度
+        :params allowPOS: iterable of str，关键词应当属于的词性，默认为"default" {'n', 'ns', 'nr', 'nt', 'nz', 'vn', 'v', 'an', 'a', 'i'}以及已登录的实体词类型
+        :params method: 选择用于抽取的算法，目前支持"jieba_tfidf", "tfidf", "textrank"
+        :params kwargs: 其他算法专属参数
+
+
+        """
+        assert method in {"jieba_tfidf", "textrank"}, print("目前不支持的算法")
+        if allowPOS == 'default':
+            # ref: 结巴分词标注兼容_ICTCLAS2008汉语词性标注集 https://www.cnblogs.com/hpuCode/p/4416186.html
+            allowPOS = {'n', 'ns', 'nr', 'nt', 'nz', 'vn', 'v', 'an', 'a', 'i'}
+        else:
+            assert hasattr(allowPOS, "__iter__")
+        # for HT, we consider registered entity types specifically
+        allowPOS |= set(self.type_entity_mention_dict)
+
+        assert stopwords == 'baidu' or (hasattr(stopwords, '__iter__') and type(stopwords) != str)
+        stopwords = get_baidu_stopwords() if stopwords == 'baidu' else set(stopwords)
+        
+        if method == "jieba_tfidf":
+            kwds = jieba.analyse.extract_tags(text, topK=int(2*topK), allowPOS=allowPOS, withWeight=with_score)
+            if with_score:
+                kwds = [(kwd, score) for (kwd, score) in kwds if kwd not in stopwords][:topK]
+            else:
+                kwds = kwds[:topK]
+        elif method == "textrank":
+            block_type = kwargs.get("block_type", "doc")
+            assert block_type in {"sent", "para", "doc"}
+            window = kwargs.get("window", 2)
+            weighted = kwargs.get("weighted", True)
+            if block_type == "doc":
+                blocks = [text]
+            elif block_type == "para":
+                blocks = [para.strip() for para in text.split("\n") if para.strip() != ""]
+            elif block_type == "sent":
+                blocks = self.cut_sentences(text)
+            block_pos = (self.posseg(block.strip(), stopwords=stopwords) for block in blocks)
+            block_words = [[wd for wd, pos in x 
+                               if pos in allowPOS and len(wd) >= min_word_len] 
+                               for x in block_pos]
+            kwds = textrank(block_words, topK, with_score, window, weighted)
+        
+        return kwds
+
+            
+            

@@ -10,6 +10,7 @@
 # 李军 中文评论的褒贬义分类实验研究 硕士论文 清华大学 2008
 import os
 import json
+from collections import defaultdict
 
 def get_qh_sent_dict():
     """
@@ -123,4 +124,31 @@ def get_english_senti_lexicon(type="LH"):
         senti_lexicon = json.load(f)
     return senti_lexicon
 
-
+def get_jieba_dict(min_freq=0, max_freq=float('inf'), with_pos=False, use_proxy=False, proxies=None):
+    """
+    获得jieba自带的中文词语词频词典
+    
+    :params min_freq: 选取词语需要的最小词频
+    :params max_freq: 选取词语允许的最大词频
+    :params with_pos: 返回结果是否包括词性信息
+    :return if not with_pos, dict of {wd: freq}, else, dict of {(wd, pos): freq} 
+    """
+    from .download_utils import RemoteFileMetadata, check_download_resource
+    remote = RemoteFileMetadata(
+        filename='jieba_dict.txt',
+        url='https://github.com/blmoistawinde/HarvestText/releases/download/V0.8/jieba_dict.txt',
+        checksum='7197c3211ddd98962b036cdf40324d1ea2bfaa12bd028e68faa70111a88e12a8')
+    file_path = check_download_resource(remote, use_proxy, proxies)
+    ret = defaultdict(int)
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            if len(line.strip().split()) == 3:
+                wd, freq, pos = line.strip().split()
+                freq = int(freq)
+            if freq > min_freq and freq < max_freq:
+                if not with_pos:
+                    ret[wd] = freq
+                else:
+                    ret[(wd, pos)] = freq
+    return ret
+        

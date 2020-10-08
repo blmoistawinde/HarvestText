@@ -53,6 +53,7 @@ class HarvestText(EntNetworkMixin, EntRetrieveMixin, ParsingMixin, SentimentMixi
             self.pinyin_adjlist = json.load(f)
         self.language = language
         if language == "en":
+            import nltk
             try:
                 nltk.data.find('taggers/averaged_perceptron_tagger')
             except:
@@ -774,7 +775,7 @@ class HarvestText(EntNetworkMixin, EntRetrieveMixin, ParsingMixin, SentimentMixi
         if t2s:
             cc = OpenCC('t2s')
             text = cc.convert(text)
-        assert hasattr(stop_terms, "__init__"), Exception("去除的词语必须是一个可迭代对象")
+        assert hasattr(stop_terms, "__iter__"), Exception("去除的词语必须是一个可迭代对象")
         if type(stop_terms) == str:
             text = text.replace(stop_terms, "")
         else:

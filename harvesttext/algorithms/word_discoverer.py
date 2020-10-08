@@ -202,10 +202,12 @@ class WordDiscoverer(object):
             v.left = entropyOfList(v.left)
             v.right = entropyOfList(v.right)
         return values
-    def get_df_info(self, ex_mentions):
+    def get_df_info(self, ex_mentions, exclude_number=True):
         info = {"text":[],"freq":[],"left_ent":[],"right_ent":[],"agg":[]}
         for w in self.word_infos:
             if w.text in ex_mentions:
+                continue
+            if exclude_number and w.text.isdigit():
                 continue
             info["text"].append(w.text)
             info["freq"].append(w.freq)
