@@ -4,10 +4,26 @@ harvesttext package
 Submodules
 ----------
 
-harvesttext.entity\_discoverer module
--------------------------------------
+harvesttext.download\_utils module
+----------------------------------
 
-.. automodule:: harvesttext.entity_discoverer
+.. automodule:: harvesttext.download_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+harvesttext.ent\_network module
+-------------------------------
+
+.. automodule:: harvesttext.ent_network
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+harvesttext.ent\_retrieve module
+--------------------------------
+
+.. automodule:: harvesttext.ent_retrieve
    :members:
    :undoc-members:
    :show-inheritance:
@@ -20,10 +36,10 @@ harvesttext.harvesttext module
    :undoc-members:
    :show-inheritance:
 
-harvesttext.match\_patterns module
-----------------------------------
+harvesttext.parsing module
+--------------------------
 
-.. automodule:: harvesttext.match_patterns
+.. automodule:: harvesttext.parsing
    :members:
    :undoc-members:
    :show-inheritance:
@@ -36,34 +52,26 @@ harvesttext.resources module
    :undoc-members:
    :show-inheritance:
 
-harvesttext.sent\_dict module
------------------------------
+harvesttext.sentiment module
+----------------------------
 
-.. automodule:: harvesttext.sent_dict
+.. automodule:: harvesttext.sentiment
    :members:
    :undoc-members:
    :show-inheritance:
 
-harvesttext.texttile module
----------------------------
+harvesttext.summary module
+--------------------------
 
-.. automodule:: harvesttext.texttile
+.. automodule:: harvesttext.summary
    :members:
    :undoc-members:
    :show-inheritance:
 
-harvesttext.utils module
-------------------------
+harvesttext.word\_discover module
+---------------------------------
 
-.. automodule:: harvesttext.utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-harvesttext.word\_discoverer module
------------------------------------
-
-.. automodule:: harvesttext.word_discoverer
+.. automodule:: harvesttext.word_discover
    :members:
    :undoc-members:
    :show-inheritance:
