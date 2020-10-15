@@ -725,7 +725,8 @@ class HarvestText(EntNetworkMixin, EntRetrieveMixin, ParsingMixin, SentimentMixi
     def clean_text(self, text, remove_url=True, email=True, weibo_at=True, stop_terms=("转发微博",),
                    emoji=True, weibo_topic=False, deduplicate_space=True,
                    norm_url=False, norm_html=False, to_url=False,
-                   remove_puncts=False, remove_tags=True, t2s=False):
+                   remove_puncts=False, remove_tags=True, t2s=False,
+                   expression_len=(1,6), linesep2space=False):
         '''
         进行各种文本清洗操作，微博中的特殊格式，网址，email，html代码，等等
 
@@ -743,8 +744,15 @@ class HarvestText(EntNetworkMixin, EntRetrieveMixin, ParsingMixin, SentimentMixi
         :param remove_puncts: （默认不使用）移除所有标点符号
         :param remove_tags: （默认使用）移除所有html块
         :param t2s: （默认不使用）繁体字转中文
+        :param expression_len: 假设表情的表情长度范围，不在范围内的文本认为不是表情，不加以清洗，如[加上特别番外荞麦花开时共五册]。设置为None则没有限制
+        :param linesep2space: （默认不使用）把换行符转换成空格
         :return: 清洗后的文本
         '''
+        # unicode不可见字符
+        # 未转义
+        text = re.sub(r"[\u200b-\u200d]", "", text)
+        # 已转义
+        text = re.sub(r"(\\u200b|\\u200c|\\u200d)", "", text)
         # 反向的矛盾设置
         if norm_url and to_url:
             raise Exception("norm_url和to_url是矛盾的设置")
@@ -767,11 +775,30 @@ class HarvestText(EntNetworkMixin, EntRetrieveMixin, ParsingMixin, SentimentMixi
         if weibo_at:
             text = re.sub(r"(回复)?(//)?\s*@\S*?\s*(:|：| |$)", " ", text)  # 去除正文中的@和回复/转发中的用户名
         if emoji:
-            text = re.sub(r"\[\S+\]", "", text)  # 去除表情符号
+            # 去除括号包围的表情符号
+            # ? lazy match避免把两个表情中间的部分去除掉
+            if type(expression_len) in {tuple, list} and len(expression_len) == 2:
+                # 设置长度范围避免误伤人用的中括号内容，如[加上特别番外荞麦花开时共五册]
+                lb, rb = expression_len
+                text = re.sub(r"\[\S{"+str(lb)+r","+str(rb)+r"}?\]", "", text)  
+            else:
+                text = re.sub(r"\[\S+?\]", "", text)
+            # text = re.sub(r"\[\S+\]", "", text)
+            # 去除真,图标式emoji
+            emoji_pattern = re.compile("["
+                           u"\U0001F600-\U0001F64F"  # emoticons
+                           u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                           u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                           u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                           u"\U00002702-\U000027B0"
+                           "]+", flags=re.UNICODE)
+            text = emoji_pattern.sub(r'', text)
         if weibo_topic:
             text = re.sub(r"#\S+#", "", text)  # 去除话题内容
+        if linesep2space:
+            text = text.replace("\n", " ")   # 不需要换行的时候变成1行
         if deduplicate_space:
-            text = re.sub(r"\s+", " ", text)   # 合并正文中过多的空格
+            text = re.sub(r"(\s)+", r"\1", text)   # 合并正文中过多的空格
         if t2s:
             cc = OpenCC('t2s')
             text = cc.convert(text)
