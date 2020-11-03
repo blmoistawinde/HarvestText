@@ -5,6 +5,7 @@ numpy
 scipy
 pandas
 networkx
+matplotlib
 pypinyin
 pyhanlp
 rdflib
