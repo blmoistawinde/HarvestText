@@ -11,3 +11,4 @@
 *ht_model1
 /docs/_build/
 /.vscode
+tests/test_*_current

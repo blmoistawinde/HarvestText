@@ -63,9 +63,9 @@ class HarvestText(EntNetworkMixin, EntRetrieveMixin, ParsingMixin, SentimentMixi
             except:
                 nltk.download('universal_tagset')
             try:
-                nltk.data.find('tokenizers/punkts')
+                nltk.data.find('tokenizers/punkt')
             except:
-                nltk.download('punkts')
+                nltk.download('punkt')
             
 
     def build_trie(self, new_word, entity, entity_type):
