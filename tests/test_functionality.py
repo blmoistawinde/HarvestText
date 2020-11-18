@@ -296,28 +296,28 @@ def test_entity_error_check():
     sys.stdout.close()
     assert open(get_current_function_name() + "_current").read() == expected
 
-def test_depend_parse():
-    sys.stdout, expected = open(get_current_function_name()+"_current","w"), open(get_current_function_name()+"_expected").read()
-    ht0 = HarvestText()
-    para = "上港的武磊武球王是中国最好的前锋。"
-    entity_mention_dict = {'武磊': ['武磊', '武球王'], "上海上港":["上港"]}
-    entity_type_dict = {'武磊': '球员', "上海上港":"球队"}
-    ht0.add_entities(entity_mention_dict, entity_type_dict)
-    for arc in ht0.dependency_parse(para):
-        print(arc)
-    print(ht0.triple_extraction(para))
+# def test_depend_parse():
+#     sys.stdout, expected = open(get_current_function_name()+"_current","w"), open(get_current_function_name()+"_expected").read()
+#     ht0 = HarvestText()
+#     para = "上港的武磊武球王是中国最好的前锋。"
+#     entity_mention_dict = {'武磊': ['武磊', '武球王'], "上海上港":["上港"]}
+#     entity_type_dict = {'武磊': '球员', "上海上港":"球队"}
+#     ht0.add_entities(entity_mention_dict, entity_type_dict)
+#     for arc in ht0.dependency_parse(para):
+#         print(arc)
+#     print(ht0.triple_extraction(para))
 
-    sys.stdout.close()
-    # assert open(get_current_function_name() + "_current").read() == expected
+#     sys.stdout.close()
+#     # assert open(get_current_function_name() + "_current").read() == expected
 
-def test_named_entity_recognition():
-    sys.stdout, expected = open(get_current_function_name()+"_current","w"), open(get_current_function_name()+"_expected").read()
-    ht0 = HarvestText()
-    sent = "上海上港足球队的武磊是中国最好的前锋。"
-    print(ht0.named_entity_recognition(sent))
+# def test_named_entity_recognition():
+#     sys.stdout, expected = open(get_current_function_name()+"_current","w"), open(get_current_function_name()+"_expected").read()
+#     ht0 = HarvestText()
+#     sent = "上海上港足球队的武磊是中国最好的前锋。"
+#     print(ht0.named_entity_recognition(sent))
 
-    sys.stdout.close()
-    assert open(get_current_function_name()+"_current").read() == expected
+#     sys.stdout.close()
+#     assert open(get_current_function_name()+"_current").read() == expected
 
 
 if __name__ == "__main__":
