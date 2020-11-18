@@ -323,6 +323,9 @@ def clean_text():
     print("清洗网址URL")
     print("原：", text1)
     print("清洗后：", ht0.clean_text(text1, remove_url=True))
+    text1 = "JJ棋牌数据4.3万。数据链接http://www.jj.cn/，数据第一个账号，第二个密码，95%可登录，可以登录官网查看数据是否准确"
+    print("原：", text1)
+    print("清洗后：", ht0.clean_text(text1, remove_url=True))
     # 清洗邮箱
     text1 = "我的邮箱是abc@demo.com，欢迎联系"
     print("清洗邮箱")

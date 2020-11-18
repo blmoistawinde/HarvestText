@@ -26,6 +26,9 @@ def test_hard_text_cleaning():
     print("清洗前：", [text1])
     print("清洗后：", [text2])
     assert text2 == "各位大神们求教一下这是什么动物呀！\n为什么它同时长得有点吓人又有点可爱\n#thosetiktoks#"
+    text1 = "JJ棋牌数据4.3万。数据链接http://www.jj.cn/，数据第一个账号，第二个密码，95%可登录，可以登录官网查看数据是否准确"
+    text2 = ht.clean_text(text1)
+    assert text2 == "JJ棋牌数据4.3万。数据链接，数据第一个账号，第二个密码，95%可登录，可以登录官网查看数据是否准确"
     
 
 if __name__ == "__main__":
