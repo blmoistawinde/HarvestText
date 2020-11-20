@@ -13,6 +13,8 @@ Sow with little data seed, harvest much from a text field.
 
 [文档](https://harvesttext.readthedocs.io/en/latest/)
 
+在[Github](https://github.com/blmoistawinde/HarvestText)和[码云Gitee](https://gitee.com/blmoistawinde/HarvestText)上同步。如果在Github上浏览/下载速度慢的话可以转到[码云](https://gitee.com/blmoistawinde/HarvestText)上操作。
+
 ## 用途
 HarvestText是一个专注无（弱）监督方法，能够整合领域知识（如类型，别名）对特定领域文本进行简单高效地处理和分析的库。适用于许多文本预处理和初步探索性分析任务，在小说分析，网络文本，专业文献等领域都有潜在应用价值。
 
