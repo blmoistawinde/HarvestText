@@ -29,8 +29,11 @@ class SummaryMixin:
         # 使用standard_name,相似度可以基于实体链接的结果计算而更加准确
         sent_tokens = [self.seg(sent.strip(), standard_name=standard_name, stopwords=stopwords) for sent in sents]
         if self.language == "en":
-            from pattern.en import lemma
-            sent_tokens = [[lemma(wd) for wd in sent] for sent in sent_tokens]
+            try:
+                from pattern.en import lemma
+                sent_tokens = [[lemma(wd) for wd in sent] for sent in sent_tokens]
+            except:
+                print(" `pattern` is not installed, so the english words will not be lemmatized, this might slightly hurt the summary quality")
         sent_tokens = [sent for sent in sent_tokens if len(sent) > 0]
         G = nx.Graph()
         for u, v in combinations(range(len(sent_tokens)), 2):
