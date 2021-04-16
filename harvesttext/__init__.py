@@ -4,7 +4,7 @@ import pickle
 from .harvesttext import HarvestText
 from .resources import *
 
-__version__ = '0.8.1.2'
+__version__ = '0.8.1.3'
 
 def saveHT(htModel,filename):
     with open(filename, "wb") as f:
