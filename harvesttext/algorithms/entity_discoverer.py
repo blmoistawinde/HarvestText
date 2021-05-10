@@ -145,9 +145,16 @@ class NFLEntityDiscoverer(NERPEntityDiscover):
             - id2word
         """
         print("Training fasttext")
-        model = FastText(sent_words, size=emb_dim, min_count=min_count,
+        try:
+            # gensim 4.0+
+            model = FastText(sent_words, vector_size=emb_dim, min_count=min_count,
+                            epochs=ft_iters, word_ngrams=int(use_subword), min_n=min_n, max_n=max_n)
+            id2word = [wd for wd in id2word if wd in model.wv.index_to_key]
+        except:
+            # gensim 3.x
+            model = FastText(sent_words, size=emb_dim, min_count=min_count,
                          iter=ft_iters, word_ngrams=int(use_subword), min_n=min_n, max_n=max_n)
-        id2word = [wd for wd in id2word if wd in model.wv.vocab]
+            id2word = [wd for wd in id2word if wd in model.wv.vocab]
         word2id = {wd: i for (i, wd) in enumerate(id2word)}
         emb_mat = np.zeros((len(id2word), emb_dim))
         for i, wd in enumerate(id2word):
