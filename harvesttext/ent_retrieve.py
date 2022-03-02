@@ -7,6 +7,8 @@ class EntRetrieveMixin:
     - 基于倒排索引快速检索包括某个实体的文档，以及统计出现某实体的文档数目
     """
     def build_index(self, docs, with_entity=True, with_type=True):
+        if len(self.entity_type_dict) == 0:
+            raise Exception("请先使用add_entities等函数添加希望关注的实体，再进行索引和检索")
         inv_index = defaultdict(set)
         for i, sent in enumerate(docs):
             entities_info = self.entity_linking(sent)
@@ -18,6 +20,8 @@ class EntRetrieveMixin:
         return inv_index
 
     def get_entity_counts(self, docs, inv_index, used_type=[]):
+        if len(inv_index) == 0:
+            raise Exception("请先使用add_entities等函数添加希望关注的实体，再进行索引和检索")
         if len(used_type) > 0:
             entities = iter(x for x in self.entity_type_dict
                             if self.entity_type_dict[x] in used_type)
@@ -27,6 +31,8 @@ class EntRetrieveMixin:
         return cnt
 
     def search_entity(self, query, docs, inv_index):
+        if len(inv_index) == 0:
+            raise Exception("请先使用add_entities等函数添加希望关注的实体，再进行索引和检索")
         words = query.split()
         if len(words) > 0:
             ids = inv_index[words[0]]
