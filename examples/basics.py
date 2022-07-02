@@ -374,6 +374,11 @@ def cut_paragraph():
     # predicted_paras2 = ht0.cut_paragraphs(text2, num_paras=5, seq_chars=10, align_boundary=False)
     # print("\n".join(predicted_paras2)+"\n")
 
+def cut_sentence():
+    print("文本分句")
+    ht0 = HarvestText()
+    para = "向量的研究结合了数学的三个基本领域：数量、结构及空间。向量分析则将其扩展至第四个基本的领域内，即变化。创立于二十世纪三十年代的法国的布尔巴基学派认为：纯粹数学，是研究抽象结构的理论。结构，就是以初始概念和公理出发的演绎系统。空间的研究源自于几何－尤其是欧几里得几何。布尔巴基学派认为，有三种基本的抽象结构：代数结构（群，环，域……），序结构（偏序，全序……），拓扑结构（邻域，极限，连通性，维数……）。第一句...第二句…第三句。尾巴"
+    print("\n".join(ht0.cut_sentences(para)))
 
 def test_english():
     # ♪ "Until the Day" by JJ Lin
@@ -474,6 +479,7 @@ if __name__ == "__main__":
     cut_paragraph()
     jieba_dict_new_word()
     extract_keywords()
+    cut_sentence()
     # 需要下载外部资源或交互，跑起来可能需要等待的例子，解除注释以后可以尝试
     # test_english()
     # entity_network()
