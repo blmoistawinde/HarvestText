@@ -7,7 +7,6 @@ pandas
 networkx
 matplotlib
 pypinyin
-pyhanlp
 rdflib
 python-louvain
 tqdm

@@ -100,6 +100,14 @@ ht = HarvestText()
 
 即可调用本库的功能接口。
 
+注意：部分功能需要安装额外的库，但有一定可能安装失败，故需要的话请手动安装
+```shell script
+# 部分英语功能
+pip install pattern
+# 命名实体识别、句法分析等功能，需要python <= 3.8
+pip install pyhanlp
+```
+
 <a id="实体链接"> </a>
 
 ### 实体链接
