@@ -39,10 +39,8 @@ class SummaryMixin:
         for u, v in combinations(range(len(sent_tokens)), 2):
             G.add_edge(u, v, weight=sim_func(sent_tokens[u], sent_tokens[v]))
 
-        try:
-            pr = nx.pagerank_scipy(G)  # sometimes fail to converge
-        except:
-            pr = nx.pagerank_numpy(G)
+        pr = nx.pagerank(G)  # sometimes fail to converge
+
         pr_sorted = sorted(pr.items(), key=lambda x: x[1], reverse=True)
         if not avoid_repeat:
             ret = []
