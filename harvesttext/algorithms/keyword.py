@@ -28,7 +28,7 @@ def textrank(block_words, topK, with_score=False, window=2, weighted=False):
                 else:
                     G.add_edge(u, v, weight=1)
 
-    pr = nx.pagerank_scipy(G)
+    pr = nx.pagerank(G)
     pr_sorted = sorted(pr.items(), key=lambda x: x[1], reverse=True)
     if with_score:
         return pr_sorted[:topK]
