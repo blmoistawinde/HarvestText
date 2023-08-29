@@ -75,6 +75,7 @@ HarvestText是一个专注无（弱）监督方法，能够整合领域知识（
 		- 利用句法分析，提取可能表示事件的三元组。
 	- [简易问答系统](#简易问答系统)
 		- 从三元组中建立知识图谱并应用于问答，可以定制一些问题模板。效果有待提升，仅作为示例。
+- [引用](#引用)
 
 	
 ## 用法
@@ -852,6 +853,18 @@ we imagine what we'll find, in another life.
 ```
 
 目前对英语的支持并不完善，除去上述示例中的功能，其他功能不保证能够使用。
+
+## 引用
+如果你发现这个库对你的学术工作有所帮助，请按照下面的格式引用
+```
+@misc{zhangHarvestText,
+	author = {Zhiling Zhang},
+	title = {{G}it{H}ub - blmoistawinde/{H}arvest{T}ext},
+	journal = {GitHub repository},
+	howpublished = {\url{https://github.com/blmoistawinde/HarvestText}},
+	year = {2023}
+}
+```
 
 ## More
 
