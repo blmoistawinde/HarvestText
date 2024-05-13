@@ -1,5 +1,4 @@
 scikit-learn
-gensim
 jieba
 numpy
 scipy

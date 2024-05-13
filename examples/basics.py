@@ -350,6 +350,11 @@ def clean_text():
     print("繁体字转简体")
     print("原：", text1)
     print("清洗后：", ht0.clean_text(text1, t2s=True))
+    # markdown超链接提取文本
+    text1 = "欢迎使用[HarvestText : A Toolkit for Text Mining and Preprocessing](https://github.com/blmoistawinde/HarvestText)这个库"
+    print("markdown超链接提取文本")
+    print("原：", text1)
+    print("清洗后：", ht0.clean_text(text1, t2s=True))
 
 def extract_only_chinese(file):
     pattern = re.compile(r'[^\u4e00-\u9fa5]')

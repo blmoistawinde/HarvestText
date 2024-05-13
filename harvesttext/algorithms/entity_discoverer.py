@@ -8,7 +8,6 @@ import community
 from pypinyin import lazy_pinyin
 from collections import defaultdict
 from sklearn.metrics.pairwise import cosine_similarity
-from gensim.models import FastText
 
 class NERPEntityDiscover:
     def __init__(self, sent_words, type_entity_dict, entity_count, pop_words_cnt, word2id, id2word,
@@ -137,6 +136,10 @@ class NFLEntityDiscoverer(NERPEntityDiscover):
         self.entity_mention_dict, self.entity_type_dict = self.organize(partition, pattern_entity2mentions)
 
     def train_emb(self, sent_words, word2id, id2word, emb_dim, min_count, ft_iters, use_subword, min_n, max_n):
+        try:
+            from gensim.models import FastText
+        except:
+            raise Exception("使用fasttext功能需要pip install -U gensim")
         """因为fasttext的词频筛选策略(>=5)，word2id和id2word会发生改变，但是要保持按照词频的排序
 
         :return: emb_mat, word2id, id2word

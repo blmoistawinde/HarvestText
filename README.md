@@ -1,8 +1,6 @@
 ﻿# HarvestText
 
-Sow with little data seed, harvest much from a text field.
-
-播撒几多种子词，收获万千领域实
+HarvestText : A Toolkit for Text Mining and Preprocessing
 
 ![GitHub stars](https://img.shields.io/github/stars/blmoistawinde/harvesttext?style=social) 
 ![PyPI - Python Version](https://img.shields.io/badge/python-3.6+-blue.svg) 
@@ -186,35 +184,6 @@ text1 = "回复@钱旭明QXM:[嘻嘻][嘻嘻] //@钱旭明QXM:杨大哥[good][go
 print("清洗微博【@和表情符等】")
 print("原：", text1)
 print("清洗后：", ht0.clean_text(text1))
-# URL的清理
-text1 = "【#赵薇#：正筹备下一部电影 但不是青春片....http://t.cn/8FLopdQ"
-print("清洗网址URL")
-print("原：", text1)
-print("清洗后：", ht0.clean_text(text1, remove_url=True))
-# 清洗邮箱
-text1 = "我的邮箱是abc@demo.com，欢迎联系"
-print("清洗邮箱")
-print("原：", text1)
-print("清洗后：", ht0.clean_text(text1, email=True))
-# 处理URL转义字符
-text1 = "www.%E4%B8%AD%E6%96%87%20and%20space.com"
-print("URL转正常字符")
-print("原：", text1)
-print("清洗后：", ht0.clean_text(text1, norm_url=True, remove_url=False))
-text1 = "www.中文 and space.com"
-print("正常字符转URL[含有中文和空格的request需要注意]")
-print("原：", text1)
-print("清洗后：", ht0.clean_text(text1, to_url=True, remove_url=False))
-# 处理HTML转义字符
-text1 = "&lt;a c&gt;&nbsp;&#x27;&#x27;"
-print("HTML转正常字符")
-print("原：", text1)
-print("清洗后：", ht0.clean_text(text1, norm_html=True))
-# 繁体字转简体
-text1 = "心碎誰買單"
-print("繁体字转简体")
-print("原：", text1)
-print("清洗后：", ht0.clean_text(text1, t2s=True))
 ```
 
 ```
@@ -222,24 +191,90 @@ print("清洗后：", ht0.clean_text(text1, t2s=True))
 清洗微博【@和表情符等】
 原： 回复@钱旭明QXM:[嘻嘻][嘻嘻] //@钱旭明QXM:杨大哥[good][good]
 清洗后： 杨大哥
+```
+
+```python
+# URL的清理
+text1 = "【#赵薇#：正筹备下一部电影 但不是青春片....http://t.cn/8FLopdQ"
+print("清洗网址URL")
+print("原：", text1)
+print("清洗后：", ht0.clean_text(text1, remove_url=True))
+```
+```
 清洗网址URL
 原： 【#赵薇#：正筹备下一部电影 但不是青春片....http://t.cn/8FLopdQ
 清洗后： 【#赵薇#：正筹备下一部电影 但不是青春片....
+```
+```python
+# 清洗邮箱
+text1 = "我的邮箱是abc@demo.com，欢迎联系"
+print("清洗邮箱")
+print("原：", text1)
+print("清洗后：", ht0.clean_text(text1, email=True))
+```
+```
 清洗邮箱
 原： 我的邮箱是abc@demo.com，欢迎联系
 清洗后： 我的邮箱是，欢迎联系
+```
+```python
+# 处理URL转义字符
+text1 = "www.%E4%B8%AD%E6%96%87%20and%20space.com"
+print("URL转正常字符")
+print("原：", text1)
+print("清洗后：", ht0.clean_text(text1, norm_url=True, remove_url=False))
+```
+```
 URL转正常字符
 原： www.%E4%B8%AD%E6%96%87%20and%20space.com
 清洗后： www.中文 and space.com
+```
+```python
+text1 = "www.中文 and space.com"
+print("正常字符转URL[含有中文和空格的request需要注意]")
+print("原：", text1)
+print("清洗后：", ht0.clean_text(text1, to_url=True, remove_url=False))
+```
+```
 正常字符转URL[含有中文和空格的request需要注意]
 原： www.中文 and space.com
 清洗后： www.%E4%B8%AD%E6%96%87%20and%20space.com
+```
+```python
+# 处理HTML转义字符
+text1 = "&lt;a c&gt;&nbsp;&#x27;&#x27;"
+print("HTML转正常字符")
+print("原：", text1)
+print("清洗后：", ht0.clean_text(text1, norm_html=True))
+```
+```
 HTML转正常字符
 原： &lt;a c&gt;&nbsp;&#x27;&#x27;
 清洗后： <a c> ''
+```
+```python
+# 繁体字转简体
+text1 = "心碎誰買單"
+print("繁体字转简体")
+print("原：", text1)
+print("清洗后：", ht0.clean_text(text1, t2s=True))
+```
+```
 繁体字转简体
 原： 心碎誰買單
 清洗后： 心碎谁买单
+```
+```python
+# markdown超链接提取文本
+text1 = "欢迎使用[HarvestText : A Toolkit for Text Mining and Preprocessing](https://github.com/blmoistawinde/HarvestText)这个库"
+print("markdown超链接提取文本")
+print("原：", text1)
+print("清洗后：", ht0.clean_text(text1, t2s=True))
+```
+```
+markdown超链接提取文本
+原： 欢迎使用[HarvestText : A Toolkit for Text Mining and Preprocessing](https://github.com/blmoistawinde/HarvestText)这个库
+清洗后： 欢迎使用HarvestText : A Toolkit for Text Mining and Preprocessing这个库
 ```
 
 <a id="命名实体识别"> </a>
@@ -307,27 +342,33 @@ def entity_error_check():
     sent0 = "武磊和吴磊拼音相同"
     print(sent0)
     print(ht0.entity_linking(sent0, pinyin_tolerance=0))
+    """
+    武磊和吴磊拼音相同
+    [([0, 2], ('武磊', '#人名#')), [(3, 5), ('武磊', '#人名#')]]
+    """
     sent1 = "武磊和吴力只差一个拼音"
     print(sent1)
     print(ht0.entity_linking(sent1, pinyin_tolerance=1))
+    """
+    武磊和吴力只差一个拼音
+    [([0, 2], ('武磊', '#人名#')), [(3, 5), ('武磊', '#人名#')]]
+    """
     sent2 = "武磊和吴磊只差一个字"
     print(sent2)
     print(ht0.entity_linking(sent2, char_tolerance=1))
+    """
+    武磊和吴磊只差一个字
+    [([0, 2], ('武磊', '#人名#')), [(3, 5), ('武磊', '#人名#')]]
+    """
     sent3 = "吴磊和吴力都可能是武磊的代称"
     print(sent3)
     print(ht0.get_linking_mention_candidates(sent3, pinyin_tolerance=1, char_tolerance=1))
+    """
+    吴磊和吴力都可能是武磊的代称
+    ('吴磊和吴力都可能是武磊的代称', defaultdict(<class 'list'>, {(0, 2): {'武磊'}, (3, 5): {'武磊'}}))
+    """
 ```
 
-```
-武磊和吴磊拼音相同
-[([0, 2], ('武磊', '#人名#')), [(3, 5), ('武磊', '#人名#')]]
-武磊和吴力只差一个拼音
-[([0, 2], ('武磊', '#人名#')), [(3, 5), ('武磊', '#人名#')]]
-武磊和吴磊只差一个字
-[([0, 2], ('武磊', '#人名#')), [(3, 5), ('武磊', '#人名#')]]
-吴磊和吴力都可能是武磊的代称
-('吴磊和吴力都可能是武磊的代称', defaultdict(<class 'list'>, {(0, 2): {'武磊'}, (3, 5): {'武磊'}}))
-```
 <a id="情感分析"> </a>
 
 ### 情感分析
@@ -378,7 +419,17 @@ print("%s:%f" % ("二十万",sent_dict["二十万"]))
 print("%s:%f" % ("万恶",sent_dict["万恶"]))
 print("%f:%s" % (ht.analyse_sent(docs[0]), docs[0]))
 print("%f:%s" % (ht.analyse_sent(docs[1]), docs[1]))
-
+```
+```
+sentiment dictionary using default seed words
+scale="0-1", 按照最大为1，最小为0进行线性伸缩，0.5未必是中性
+赞同:1.000000
+二十万:0.153846
+万恶:0.000000
+0.449412:张市筹设兴华实业公司外区资本家踊跃投资晋察冀边区兴华实业公司，自筹备成立以来，解放区内外企业界人士及一般商民，均踊跃认股投资
+0.364910:打倒万恶的资本家
+```
+```
 print("scale=\"+-1\", 在正负区间内分别伸缩，保留0作为中性的语义")
 sent_dict = ht.build_sent_dict(docs,min_times=1,scale="+-1")
 print("%s:%f" % ("赞同",sent_dict["赞同"]))
@@ -389,13 +440,6 @@ print("%f:%s" % (ht.analyse_sent(docs[1]), docs[1]))
 ```
 
 ```
-sentiment dictionary using default seed words
-scale="0-1", 按照最大为1，最小为0进行线性伸缩，0.5未必是中性
-赞同:1.000000
-二十万:0.153846
-万恶:0.000000
-0.449412:张市筹设兴华实业公司外区资本家踊跃投资晋察冀边区兴华实业公司，自筹备成立以来，解放区内外企业界人士及一般商民，均踊跃认股投资
-0.364910:打倒万恶的资本家
 scale="+-1", 在正负区间内分别伸缩，保留0作为中性的语义
 赞同:1.000000
 二十万:0.000000
@@ -859,7 +903,7 @@ we imagine what we'll find, in another life.
 ```
 @misc{zhangHarvestText,
 	author = {Zhiling Zhang},
-	title = {{G}it{H}ub - blmoistawinde/{H}arvest{T}ext},
+	title = {HarvestText: A Toolkit for Text Mining and Preprocessing},
 	journal = {GitHub repository},
 	howpublished = {\url{https://github.com/blmoistawinde/HarvestText}},
 	year = {2023}
